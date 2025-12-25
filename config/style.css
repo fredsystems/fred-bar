@@ -49,6 +49,7 @@
 
 .bar {
   min-height: 28px;
+  background-color: rgba(108, 112, 134, 0.2);
 }
 
 button {
