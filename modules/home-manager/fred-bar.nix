@@ -3,6 +3,7 @@
   config,
   pkgs,
   inputs,
+  astral,
   ...
 }:
 
@@ -21,9 +22,9 @@ in
       configDir = "${inputs.fredbar.packages.${pkgs.system}.fredbar}/share/fredbar/config";
 
       extraPackages = with pkgs; [
-        inputs.astal.packages.${pkgs.system}.hyprland
-        inputs.astal.packages.${pkgs.system}.tray
-        inputs.astal.packages.${pkgs.system}.battery
+        astral.packages.${pkgs.system}.hyprland
+        astral.packages.${pkgs.system}.tray
+        astral.packages.${pkgs.system}.battery
       ];
     };
   };
