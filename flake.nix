@@ -48,7 +48,7 @@
       );
 
       homeManagerModules = {
-        fredbar = import ./modules/home-manager/fredbar.nix;
+        fredbar = import ./modules/home-manager/fred-bar.nix;
       };
 
       ##########################################################################
