@@ -323,7 +323,7 @@ window {
 
 .state-idle-tooltip {
   border-color: var(--ctp-overlay1);
-  color: var(--ctp-success);
+  color: var(--ctp-text);
 }
 
 /* Info: something happening, not urgent */

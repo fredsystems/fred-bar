@@ -44,7 +44,7 @@ export function StatePill(): Gtk.Box {
 
     box.add_css_class(`state-${state.severity}`);
 
-    const isIdle = state.severity === "idle" && state.sources.length === 0;
+    const isIdle = state.severity === "idle";
 
     iconLabel.label = isIdle ? IDLE_ICON : (state.icon ?? "");
   }
