@@ -23,7 +23,7 @@ in
       configDir = "${fredbarPkg}/share/fredbar/config";
 
       # Astal + friends, defined ONCE in the fredbar flake
-      extraPackages = inputs.fredbar.lib.fredbarAstalPackages pkgs.system;
+      extraPackages = inputs.fredbar.lib.fredbarAstalPackages pkgs.stdenv.hostPlatform.system;
     };
   };
 }
