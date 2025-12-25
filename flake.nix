@@ -67,7 +67,7 @@
             _module.args = {
               fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
 
-              fredbarAstalPackages = self.lib.fredbarAstalPackages;
+              inherit (self.lib) fredbarAstalPackages;
             };
           };
       };

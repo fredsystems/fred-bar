@@ -25,5 +25,25 @@ in
       extraPackages = config._module.args.fredbarAstalPackages pkgs.stdenv.hostPlatform.system;
 
     };
+
+    systemd.user.services.fredbar = {
+      Unit = {
+        Description = "FredBar (AGS-based system bar)";
+        PartOf = [ "graphical-session.target" ];
+      };
+
+      Service = {
+        Type = "simple";
+        ExecStart = "${config.home.profileDirectory}/bin/ags run";
+        Restart = "on-failure";
+        RestartSec = "2s";
+
+        KillMode = "mixed";
+      };
+
+      Install = {
+        WantedBy = [ ];
+      };
+    };
   };
 }
