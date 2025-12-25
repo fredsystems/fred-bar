@@ -4,6 +4,7 @@
 
 It is opinionated, Home-Manager–first, and intentionally minimal: fredbar exposes system state clearly, avoids over-configuration, and is built as a real application rather than a pile of shell scripts.
 
+> [!NOTE]
 > This project primarily exists to scratch my own itch — but it is structured cleanly enough that others are welcome to try it.
 
 ## Features
@@ -19,6 +20,7 @@ It is opinionated, Home-Manager–first, and intentionally minimal: fredbar expo
 - GTK tooltips with consistent styling
 - Home Manager integration
 - Optional user-level systemd service
+- Catppuccin Mocha color scheme
 
 ## Requirements
 
@@ -27,7 +29,7 @@ It is opinionated, Home-Manager–first, and intentionally minimal: fredbar expo
 - Wayland compositor (tested with **Hyprland**)
 - AGS + Astal (handled automatically by the flake)
 
-> [!NOTE]
+> [!IMPORTANT]
 > fredbar is set up to Just Work(tm) for NixOS and Home Manager. It is possible to run this without Home Manager, but you will need to configure it manually. Look at `flake.nix` and `fred-bar.nix` for context about what packages it depends on, how I set up the systemd unit, and what specific astral packages need to be installed.
 
 fredbar is **not** intended to be run without Home Manager.
