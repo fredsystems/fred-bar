@@ -58,29 +58,21 @@
       homeManagerModules = {
         fredbar =
           {
-            lib,
-            config,
             pkgs,
             ...
           }:
           {
             imports = [
               ags.homeManagerModules.default
+              ./modules/home-manager/fred-bar.nix
             ];
 
-            config =
-              (import ./modules/home-manager/fred-bar.nix {
-                inherit lib config pkgs;
-                astal = astal;
-                fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
-              }).config;
+            _module.args = {
+              fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
 
-            options =
-              (import ./modules/home-manager/fred-bar.nix {
-                inherit lib config pkgs;
-                astal = astal;
-                fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
-              }).options;
+              # only needed if fred-bar.nix references inputs directly
+              inputs = self.inputs or null;
+            };
           };
       };
 
