@@ -48,7 +48,18 @@
       );
 
       homeManagerModules = {
-        fredbar = import ./modules/home-manager/fred-bar.nix;
+        fredbar =
+          {
+            lib,
+            config,
+            pkgs,
+            ...
+          }:
+          import ./modules/home-manager/fred-bar.nix {
+            inherit lib config pkgs;
+            astal = astal;
+            fredbarPkg = self.packages.${pkgs.system}.fredbar;
+          };
       };
 
       ##########################################################################

@@ -2,8 +2,8 @@
   lib,
   config,
   pkgs,
-  inputs,
-  astral,
+  astal,
+  fredbarPkg,
   ...
 }:
 
@@ -19,12 +19,12 @@ in
     programs.ags = {
       enable = true;
 
-      configDir = "${inputs.fredbar.packages.${pkgs.system}.fredbar}/share/fredbar/config";
+      configDir = "${fredbarPkg}/share/fredbar/config";
 
       extraPackages = with pkgs; [
-        astral.packages.${pkgs.system}.hyprland
-        astral.packages.${pkgs.system}.tray
-        astral.packages.${pkgs.system}.battery
+        astal.packages.${pkgs.system}.hyprland
+        astal.packages.${pkgs.system}.tray
+        astal.packages.${pkgs.system}.battery
       ];
     };
   };
