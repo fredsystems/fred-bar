@@ -69,9 +69,6 @@
 
             _module.args = {
               fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
-
-              # only needed if fred-bar.nix references inputs directly
-              inputs = self.inputs or null;
             };
           };
       };
