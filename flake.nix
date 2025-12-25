@@ -30,6 +30,7 @@
         astal.packages.${system}.hyprland
         astal.packages.${system}.tray
         astal.packages.${system}.battery
+        astal.packages.${system}.wireplumber
       ];
     in
     {
