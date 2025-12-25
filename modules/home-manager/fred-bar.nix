@@ -2,7 +2,7 @@
   lib,
   config,
   pkgs,
-  astal,
+  inputs,
   fredbarPkg,
   ...
 }:
@@ -19,13 +19,11 @@ in
     programs.ags = {
       enable = true;
 
+      # FredBar AGS config
       configDir = "${fredbarPkg}/share/fredbar/config";
 
-      extraPackages = with pkgs; [
-        astal.packages.${pkgs.system}.hyprland
-        astal.packages.${pkgs.system}.tray
-        astal.packages.${pkgs.system}.battery
-      ];
+      # Astal + friends, defined ONCE in the fredbar flake
+      extraPackages = inputs.fredbar.lib.fredbarAstalPackages pkgs.system;
     };
   };
 }

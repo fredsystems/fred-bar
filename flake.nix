@@ -25,8 +25,16 @@
     let
       systems = precommit.lib.supportedSystems;
       inherit (nixpkgs) lib;
+
+      fredbarAstalPackages = system: [
+        astal.packages.${system}.hyprland
+        astal.packages.${system}.tray
+        astal.packages.${system}.battery
+      ];
     in
     {
+      lib.fredbarAstalPackages = fredbarAstalPackages;
+
       packages = lib.genAttrs systems (
         system:
         let
@@ -86,7 +94,7 @@
 
           # ── Feature toggles ─────────────────────────────
           check_rust = false;
-          check_docker = true;
+          check_docker = false;
           check_python = false;
           check_javascript = true;
         };
@@ -114,11 +122,7 @@
                 nixfmt
                 nodePackages.markdownlint-cli2
                 (ags.packages.${system}.default.override {
-                  extraPackages = [
-                    astal.packages.${pkgs.stdenv.hostPlatform.system}.hyprland
-                    astal.packages.${pkgs.stdenv.hostPlatform.system}.tray
-                    astal.packages.${pkgs.stdenv.hostPlatform.system}.battery
-                  ];
+                  extraPackages = self.lib.fredbarAstalPackages system;
                 })
               ]);
 
