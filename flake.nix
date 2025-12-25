@@ -64,14 +64,14 @@
               (import ./modules/home-manager/fred-bar.nix {
                 inherit lib config pkgs;
                 astal = astal;
-                fredbarPkg = self.packages.${pkgs.system}.fredbar;
+                fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
               }).config;
 
             options =
               (import ./modules/home-manager/fred-bar.nix {
                 inherit lib config pkgs;
                 astal = astal;
-                fredbarPkg = self.packages.${pkgs.system}.fredbar;
+                fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
               }).options;
           };
       };
@@ -113,16 +113,20 @@
                 typos
                 nixfmt
                 nodePackages.markdownlint-cli2
-                ags.packages.${system}.default
-                astal.packages.${pkgs.stdenv.hostPlatform.system}.hyprland
-                astal.packages.${pkgs.stdenv.hostPlatform.system}.tray
-                astal.packages.${pkgs.system}.battery
+                (ags.packages.${system}.default.override {
+                  extraPackages = [
+                    astal.packages.${pkgs.stdenv.hostPlatform.system}.hyprland
+                    astal.packages.${pkgs.stdenv.hostPlatform.system}.tray
+                    astal.packages.${pkgs.stdenv.hostPlatform.system}.battery
+                  ];
+                })
               ]);
 
             LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (chk.passthru.libPath or [ ]);
 
             shellHook = ''
               ${chk.shellHook}
+
               alias pre-commit="pre-commit run --all-files"
             '';
           };
