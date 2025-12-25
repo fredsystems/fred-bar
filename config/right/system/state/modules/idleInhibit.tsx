@@ -1,8 +1,9 @@
 import { createPoll } from "ags/time";
+import { scriptPath } from "resolvescripts";
 import type { Severity, SystemSignal } from "../helpers/normalize";
 import { normalizeWaybar } from "../helpers/normalize";
 
-const SCRIPT = "~/.config/hyprextra/scripts/idleinhibit-toolbar.sh";
+const SCRIPT = scriptPath("idleinhibit-toolbar.sh");
 
 interface IdleInhibitPayload {
   class?: string;

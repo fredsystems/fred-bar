@@ -1,11 +1,14 @@
 import { createPoll } from "ags/time";
+import { scriptPath } from "resolvescripts";
 import type { SystemSignal } from "../helpers/normalize";
 import { normalizeWaybar } from "../helpers/normalize";
+
+const SCRIPT = scriptPath("waybar-updates.sh");
 
 export const updateState = createPoll<SystemSignal | null>(
   null,
   5000,
-  ["bash", "-lc", "~/.config/hyprextra/scripts/waybar-updates.sh"],
+  ["bash", "-lc", SCRIPT],
   (stdout) => {
     try {
       const parsed = JSON.parse(stdout);

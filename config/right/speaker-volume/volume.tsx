@@ -3,9 +3,10 @@ import Gio from "gi://Gio";
 import Gtk from "gi://Gtk?version=4.0";
 
 import { createPoll } from "ags/time";
+import { scriptPath } from "resolvescripts";
 import { attachTooltip } from "tooltip";
 
-const SCRIPT = "~/.config/hyprextra/scripts/volume.sh";
+const SCRIPT = scriptPath("volume.sh");
 
 const ICONS = ["󰝟", "", "", ""];
 
