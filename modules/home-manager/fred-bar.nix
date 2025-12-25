@@ -23,7 +23,7 @@ in
       extraPackages = with pkgs; [
         inputs.astal.packages.${pkgs.system}.hyprland
         inputs.astal.packages.${pkgs.system}.tray
-        # battery later
+        inputs.astal.packages.${pkgs.system}.battery
       ];
     };
   };
