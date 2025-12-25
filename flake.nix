@@ -57,10 +57,7 @@
 
       homeManagerModules = {
         fredbar =
-          {
-            pkgs,
-            ...
-          }:
+          { pkgs, ... }:
           {
             imports = [
               ags.homeManagerModules.default
@@ -69,6 +66,8 @@
 
             _module.args = {
               fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
+
+              fredbarAstalPackages = self.lib.fredbarAstalPackages;
             };
           };
       };
