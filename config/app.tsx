@@ -6,6 +6,7 @@ import App from "ags/gtk4/app";
 
 import { WindowWorkspacesPill } from "./center/window-workspaces-pill";
 import { SystemTray } from "./left/sys-tray/tray";
+import { BatteryPill } from "./right/battery/battery";
 import { VolumePill } from "./right/speaker-volume/volume";
 import { StatePill } from "./right/system/state-pill";
 import { TimePill } from "./right/time-pill/time-pill";
@@ -40,6 +41,7 @@ function Bar(monitorIndex: number): Gtk.Window {
 
         <box $type="end" valign={Gtk.Align.CENTER}>
           <VolumePill />
+          <BatteryPill />
           <TimePill />
           <StatePill />
         </box>

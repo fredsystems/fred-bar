@@ -12,7 +12,7 @@ export const mediaState = createPoll<SystemSignal | null>(
   (stdout) => {
     try {
       const parsed = JSON.parse(stdout);
-      let normalized = normalizeWaybar(parsed, {
+      const normalized = normalizeWaybar(parsed, {
         severity: parsed.class === "idle" ? "idle" : "info",
       });
 

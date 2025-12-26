@@ -207,7 +207,7 @@ export function TimePill(): Gtk.Button {
   let expandTimeoutId: number | null = null;
   let collapseTimeoutId: number | null = null;
 
-  const EXPAND_DELAY_MS = 1500;
+  const EXPAND_DELAY_MS = 600;
   const COLLAPSE_DELAY_MS = 400; // tweak to taste (250–600 feels “normal”)
 
   function clearTimeoutId(id: number | null): null {

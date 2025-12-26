@@ -364,3 +364,44 @@ window {
 .state-error-tooltip {
   border-color: var(--ctp-error);
 }
+
+.battery-pill {
+  border-width: 2px;
+  border-style: solid;
+}
+
+.battery-good {
+  border-color: var(--ctp-green);
+  color: var(--ctp-green);
+}
+
+.battery-warn {
+  border-color: var(--ctp-yellow);
+  color: var(--ctp-yellow);
+}
+
+.battery-low {
+  border-color: var(--ctp-peach);
+  color: var(--ctp-peach);
+}
+
+.battery-critical {
+  border-color: var(--ctp-red);
+  color: var(--ctp-red);
+}
+
+.battery-good-tooltip {
+  border-color: var(--ctp-green);
+}
+
+.battery-warn-tooltip {
+  border-color: var(--ctp-yellow);
+}
+
+.battery-low-tooltip {
+  border-color: var(--ctp-peach);
+}
+
+.battery-critical-tooltip {
+  border-color: var(--ctp-red);
+}
