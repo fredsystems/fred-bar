@@ -1,5 +1,5 @@
 import { createPoll } from "ags/time";
-import { scriptPath } from "resolvescripts";
+import { scriptPath } from "helpers/resolvescripts";
 import type { Severity, SystemSignal } from "../helpers/normalize";
 import { normalizeWaybar } from "../helpers/normalize";
 

@@ -4,8 +4,8 @@ import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
 import { createPoll } from "ags/time";
-import { scriptPath } from "resolvescripts";
-import { attachTooltip } from "tooltip";
+import { scriptPath } from "helpers/resolvescripts";
+import { attachTooltip } from "helpers/tooltip";
 
 const SCRIPT = scriptPath("volume.sh");
 

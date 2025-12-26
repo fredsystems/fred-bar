@@ -1,7 +1,7 @@
 import AstalTray from "gi://AstalTray";
 import Gdk from "gi://Gdk?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
-import { attachTooltip } from "tooltip";
+import { attachTooltip } from "helpers/tooltip";
 
 type TrayItem = AstalTray.TrayItem;
 

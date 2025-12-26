@@ -1,7 +1,7 @@
 import Battery from "gi://AstalBattery";
 import Gtk from "gi://Gtk?version=4.0";
 
-import { attachTooltip } from "tooltip";
+import { attachTooltip } from "helpers/tooltip";
 
 /* -----------------------------
  * Helpers

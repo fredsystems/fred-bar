@@ -1,6 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
-import { attachTooltip } from "tooltip";
+import { attachTooltip } from "helpers/tooltip";
 import type { AggregatedSystemState } from "./state/helpers/aggregate";
 import type { SystemSignal } from "./state/helpers/normalize";
 import { systemState } from "./state/modules/system";
