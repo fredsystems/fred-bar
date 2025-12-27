@@ -37,20 +37,17 @@ export function TimePill(): Gtk.Button {
     focusable: false,
   });
 
-  /* ───────── Content ───────── */
+  button.set_has_frame(false);
+  button.remove_css_class("button");
 
-  const row = new Gtk.Box({
-    orientation: Gtk.Orientation.HORIZONTAL,
-    halign: Gtk.Align.CENTER,
-    valign: Gtk.Align.CENTER,
-  });
+  /* ───────── Labels ───────── */
 
   const shortLabel = new Gtk.Label({
     css_classes: ["time-label", "time-short"],
     xalign: 0.5,
   });
 
-  // Stabilize width to prevent geometry churn
+  // Keep the short state stable so the pill doesn’t jitter in collapsed mode
   shortLabel.set_width_chars(8);
   shortLabel.set_max_width_chars(8);
 
@@ -59,9 +56,20 @@ export function TimePill(): Gtk.Button {
     xalign: 0.5,
   });
 
-  row.append(shortLabel);
-  row.append(longLabel);
-  button.set_child(row);
+  /* ───────── Stack (the important part) ───────── */
+
+  const stack = new Gtk.Stack({
+    transition_type: Gtk.StackTransitionType.SLIDE_RIGHT,
+    transition_duration: 300, // match your CSS transition vibe
+    hhomogeneous: false,
+    vhomogeneous: false,
+  });
+
+  stack.add_named(shortLabel, "short");
+  stack.add_named(longLabel, "long");
+  stack.set_visible_child_name("short");
+
+  button.set_child(stack);
 
   /* ───────── Popover ───────── */
 
@@ -139,12 +147,17 @@ export function TimePill(): Gtk.Button {
   function updateLabels() {
     const now = GLib.DateTime.new_now_local();
 
-    // Always update short time
     shortLabel.set_label(now.format("%H:%M:%S") ?? "");
 
-    // Do NOT change long label while popover is open
+    // Don’t change the main label while popover is open
     if (!popoverOpen) {
-      longLabel.set_label(expanded ? (now.format(" %A, %B %e, %Y") ?? "") : "");
+      if (expanded) {
+        // IMPORTANT: no leading space here anymore
+        longLabel.set_label(now.format("%H:%M:%S %A, %B %e, %Y") ?? "");
+        stack.set_visible_child_name("long");
+      } else {
+        stack.set_visible_child_name("short");
+      }
     }
 
     if (popoverOpen) {
@@ -173,9 +186,7 @@ export function TimePill(): Gtk.Button {
     const [ok, xInRoot] = button.translate_coordinates(root, 0, 0);
     if (!ok) return;
 
-    // Remaining width from button's left edge to monitor's right edge
     const remaining = geo.width - xInRoot;
-
     popRoot.set_size_request(Math.max(remaining, 200), -1);
   }
 
@@ -208,7 +219,7 @@ export function TimePill(): Gtk.Button {
   let collapseTimeoutId: number | null = null;
 
   const EXPAND_DELAY_MS = 600;
-  const COLLAPSE_DELAY_MS = 400; // tweak to taste (250–600 feels “normal”)
+  const COLLAPSE_DELAY_MS = 400;
 
   function clearTimeoutId(id: number | null): null {
     if (id !== null) GLib.source_remove(id);
@@ -239,7 +250,6 @@ export function TimePill(): Gtk.Button {
       COLLAPSE_DELAY_MS,
       () => {
         collapseTimeoutId = null;
-        // only collapse if we’re still not hovered and popover isn’t open
         if (!hovered && !popoverOpen) applyExpanded(false);
         return GLib.SOURCE_REMOVE;
       },
@@ -256,14 +266,15 @@ export function TimePill(): Gtk.Button {
 
     popoverOpen = true;
 
-    // Freeze label state for popover lifetime
+    // Freeze stack state for popover lifetime
     if (!expanded) {
-      longLabel.set_label("");
+      stack.set_visible_child_name("short");
       button.remove_css_class("expanded");
     } else {
       longLabel.set_label(
-        GLib.DateTime.new_now_local().format(" %A, %B %e, %Y") ?? "",
+        GLib.DateTime.new_now_local().format("%A, %B %e, %Y") ?? "",
       );
+      stack.set_visible_child_name("long");
       button.add_css_class("expanded");
     }
 
@@ -278,7 +289,6 @@ export function TimePill(): Gtk.Button {
   popover.connect("closed", () => {
     popoverOpen = false;
 
-    // resume hover-driven behavior smoothly:
     if (hovered) scheduleExpand();
     else scheduleCollapse();
 
