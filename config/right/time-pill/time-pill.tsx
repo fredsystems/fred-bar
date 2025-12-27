@@ -60,7 +60,7 @@ export function TimePill(): Gtk.Button {
 
   const stack = new Gtk.Stack({
     transition_type: Gtk.StackTransitionType.SLIDE_RIGHT,
-    transition_duration: 300, // match your CSS transition vibe
+    transition_duration: 180, // match your CSS transition vibe
     hhomogeneous: false,
     vhomogeneous: false,
   });
