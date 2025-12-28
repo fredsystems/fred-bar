@@ -27,7 +27,7 @@ function disconnectedIcon(): string {
 function getNetworkInfo(network: Network.Network): {
   icon: string;
   label: string;
-  state: "good" | "warn" | "error";
+  connected: boolean;
 } {
   const wifi = network.wifi;
   const wired = network.wired;
@@ -39,7 +39,7 @@ function getNetworkInfo(network: Network.Network): {
     return {
       icon: wifiIcon(strength),
       label: ssid,
-      state: strength >= 50 ? "good" : "warn",
+      connected: true,
     };
   }
 
@@ -48,7 +48,7 @@ function getNetworkInfo(network: Network.Network): {
     return {
       icon: ethernetIcon(),
       label: "Ethernet",
-      state: "good",
+      connected: true,
     };
   }
 
@@ -56,14 +56,12 @@ function getNetworkInfo(network: Network.Network): {
   return {
     icon: disconnectedIcon(),
     label: "No Connection",
-    state: "error",
+    connected: false,
   };
 }
 
-function networkClass(state: "good" | "warn" | "error"): string {
-  if (state === "good") return "network-good";
-  if (state === "warn") return "network-warn";
-  return "network-error";
+function networkClass(connected: boolean): string {
+  return connected ? "network-connected" : "network-error";
 }
 
 /* -----------------------------
@@ -73,7 +71,7 @@ function networkClass(state: "good" | "warn" | "error"): string {
 export function NetworkPill(): Gtk.Box {
   const network = Network.get_default();
 
-  let currentClass = "network-good";
+  let currentClass = "network-connected";
 
   const box = new Gtk.Box({
     spacing: 4,
@@ -93,11 +91,10 @@ export function NetworkPill(): Gtk.Box {
     label.label = info.label;
 
     // Clear previous state classes
-    box.remove_css_class("network-good");
-    box.remove_css_class("network-warn");
+    box.remove_css_class("network-connected");
     box.remove_css_class("network-error");
 
-    currentClass = networkClass(info.state);
+    currentClass = networkClass(info.connected);
     box.add_css_class(currentClass);
   }
 

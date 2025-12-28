@@ -415,29 +415,20 @@ window {
     padding-right: 5px;
 }
 
-.network-good {
-    border-color: var(--ctp-green);
-    color: var(--ctp-green);
-}
-
-.network-warn {
-    border-color: var(--ctp-yellow);
-    color: var(--ctp-yellow);
+.network-connected {
+    border-color: var(--ctp-overlay1);
+    color: var(--ctp-text);
 }
 
 .network-error {
-    border-color: var(--ctp-red);
-    color: var(--ctp-red);
+    border-color: var(--ctp-error);
+    color: var(--ctp-error);
 }
 
-.network-good-tooltip {
-    border-color: var(--ctp-green);
-}
-
-.network-warn-tooltip {
-    border-color: var(--ctp-yellow);
+.network-connected-tooltip {
+    border-color: var(--ctp-overlay1);
 }
 
 .network-error-tooltip {
-    border-color: var(--ctp-red);
+    border-color: var(--ctp-error);
 }
