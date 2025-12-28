@@ -32,6 +32,7 @@
         astal.packages.${system}.battery
         astal.packages.${system}.wireplumber
         astal.packages.${system}.network
+        astal.packages.${system}.mpris
       ];
 
       fredbarRuntimePackages =
@@ -41,16 +42,6 @@
         in
         with pkgs;
         [
-          # Audio control (volume.sh)
-          pamixer
-          libnotify # notify-send
-          pulseaudio # pactl (or pipewire-pulse)
-          brightnessctl # optional, for LED control
-
-          # Media detection (waybar-media.sh)
-          pipewire # pw-dump
-          jq
-
           # Updates tracking (waybar-updates.sh)
           git
 
