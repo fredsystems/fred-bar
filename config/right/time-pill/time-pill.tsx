@@ -162,7 +162,7 @@ export function TimePill(): Gtk.Button {
     // Don’t change the main label while popover is open
     shortLabel.set_label(now.format("%H:%M:%S") ?? "");
     if (expanded) {
-      longLabel.set_label(now.format(" %A, %B %e, %Y") ?? "");
+      longLabel.set_label(now.format("%A, %B %e, %Y") ?? "");
     } else {
       longLabel.set_label("");
     }
