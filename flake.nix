@@ -31,6 +31,7 @@
         astal.packages.${system}.tray
         astal.packages.${system}.battery
         astal.packages.${system}.wireplumber
+        astal.packages.${system}.network
       ];
     in
     {
