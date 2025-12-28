@@ -26,6 +26,9 @@ in
 
     };
 
+    # Runtime dependencies for fredbar scripts
+    home.packages = config._module.args.fredbarRuntimePackages pkgs.stdenv.hostPlatform.system;
+
     systemd.user.services.fredbar = {
       Unit = {
         Description = "FredBar (AGS-based system bar)";

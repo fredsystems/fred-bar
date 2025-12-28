@@ -33,9 +33,34 @@
         astal.packages.${system}.wireplumber
         astal.packages.${system}.network
       ];
+
+      fredbarRuntimePackages =
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in
+        with pkgs;
+        [
+          # Audio control (volume.sh)
+          pamixer
+          libnotify # notify-send
+          pulseaudio # pactl (or pipewire-pulse)
+          brightnessctl # optional, for LED control
+
+          # Media detection (waybar-media.sh)
+          pipewire # pw-dump
+          jq
+
+          # Updates tracking (waybar-updates.sh)
+          git
+
+          # Idle inhibit (idleinhibit-toolbar.sh)
+          # systemd and gawk are already in base system
+        ];
     in
     {
       lib.fredbarAstalPackages = fredbarAstalPackages;
+      lib.fredbarRuntimePackages = fredbarRuntimePackages;
 
       packages = lib.genAttrs systems (
         system:
@@ -69,7 +94,7 @@
             _module.args = {
               fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
 
-              inherit (self.lib) fredbarAstalPackages;
+              inherit (self.lib) fredbarAstalPackages fredbarRuntimePackages;
             };
           };
       };
@@ -104,6 +129,7 @@
             buildInputs =
               chk.enabledPackages
               ++ (chk.passthru.devPackages or [ ])
+              ++ (self.lib.fredbarRuntimePackages system)
               ++ (with pkgs; [
                 pre-commit
                 check-jsonschema
