@@ -26,12 +26,32 @@ function percent(b: Battery.Device): number | null {
 function iconFor(b: Battery.Device, p: number | null): string {
   if (!b.is_present) return "";
 
-  if (b.charging) return "󰂃";
+  // https://www.nerdfonts.com/cheat-sheet
+  if (b.charging) {
+    if (p === null) return "󰂄";
+    if (p <= 10) return "󰢜";
+    if (p <= 20) return "󰂆";
+    if (p <= 30) return "󰂇";
+    if (p <= 40) return "󰂈";
+    if (p <= 50) return "󰢝";
+    if (p <= 60) return "󰂉";
+    if (p <= 70) return "󰢞";
+    if (p <= 80) return "󰂊";
+    if (p <= 90) return "󰂋";
+    return "󰂅";
+  }
 
   if (p === null) return "󰁹";
-  if (p <= 10) return "󰂎";
-  if (p <= 30) return "󰁺";
-  if (p <= 60) return "󰁻";
+  if (p <= 5) return "󰂃";
+  if (p <= 10) return "󰁺";
+  if (p <= 20) return "󰁻";
+  if (p <= 30) return "󰁼";
+  if (p <= 40) return "󰁽";
+  if (p <= 50) return "󰁾";
+  if (p <= 60) return "󰁿";
+  if (p <= 70) return "󰂀";
+  if (p <= 80) return "󰂁";
+  if (p <= 90) return "󰂂";
   return "󰁹";
 }
 
