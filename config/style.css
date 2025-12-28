@@ -234,7 +234,8 @@ window {
 
 .time-pill {
   min-height: 28px;
-  padding: 2px 0px;
+  padding-left: 8px;
+  padding-right: 8px;
 
   background-color: var(--ctp-base);
   border: 2px solid var(--ctp-overlay1);
@@ -244,11 +245,6 @@ window {
 
 .time-pill label {
   color: var(--ctp-text);
-}
-
-.expanded {
-  padding-left: 8px;
-  padding-right: 8px;
 }
 
 /* Time popover */
