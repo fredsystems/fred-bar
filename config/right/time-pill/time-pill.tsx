@@ -56,6 +56,9 @@ export function TimePill(): Gtk.Button {
     xalign: 0.5,
   });
 
+  longLabel.set_max_width_chars(30);
+  longLabel.set_width_chars(30);
+
   /* ───────── Stack (the important part) ───────── */
 
   const stack = new Gtk.Stack({
@@ -135,6 +138,8 @@ export function TimePill(): Gtk.Button {
   /* ───────── Helpers ───────── */
 
   function applyExpanded(next: boolean) {
+    if (popoverOpen) return;
+
     if (expanded === next) return;
     expanded = next;
 
@@ -150,21 +155,20 @@ export function TimePill(): Gtk.Button {
     shortLabel.set_label(now.format("%H:%M:%S") ?? "");
 
     // Don’t change the main label while popover is open
-    if (!popoverOpen) {
-      if (expanded) {
-        // IMPORTANT: no leading space here anymore
-        longLabel.set_label(now.format("%H:%M:%S %A, %B %e, %Y") ?? "");
-        stack.set_visible_child_name("long");
-      } else {
-        stack.set_visible_child_name("short");
-      }
+
+    if (expanded) {
+      // IMPORTANT: no leading space here anymore
+      longLabel.set_label(now.format("%H:%M:%S %A, %B %e, %Y") ?? "");
+      stack.set_visible_child_name("long");
+    } else {
+      stack.set_visible_child_name("short");
     }
 
     if (popoverOpen) {
       for (const c of CLOCKS) {
         const dt = nowIn(c.tzid);
         const lbl = clockLabels.get(c.tzid);
-        if (lbl) lbl.set_label(dt?.format("%H:%M") ?? "--:--");
+        if (lbl) lbl.set_label(dt?.format("%H:%M:%S") ?? "--:--");
       }
     }
   }
@@ -272,7 +276,7 @@ export function TimePill(): Gtk.Button {
       button.remove_css_class("expanded");
     } else {
       longLabel.set_label(
-        GLib.DateTime.new_now_local().format("%A, %B %e, %Y") ?? "",
+        GLib.DateTime.new_now_local().format("%H:%M:%S %A, %B %e, %Y") ?? "",
       );
       stack.set_visible_child_name("long");
       button.add_css_class("expanded");
