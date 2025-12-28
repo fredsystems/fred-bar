@@ -5,6 +5,7 @@ import type { Severity, SystemSignal } from "../helpers/normalize";
 const ICONS = {
   vpn: "󰖂", // pick your preferred VPN glyph
   network: "󰖩",
+  ethernet: "󰈀",
   offline: "󰖪",
 };
 
