@@ -7,7 +7,7 @@ const hypr = Hyprland.get_default();
 
 export function Workspaces(): Gtk.Box {
   const box = new Gtk.Box({
-    spacing: 6,
+    spacing: 0,
     css_classes: ["workspaces", "pill"],
     valign: Gtk.Align.CENTER,
   });

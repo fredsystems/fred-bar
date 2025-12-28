@@ -12,7 +12,7 @@ const tray = Tray.get_default();
 
 export function SystemTray(): Gtk.Box {
   const box = new Gtk.Box({
-    spacing: 6,
+    spacing: 0,
     css_classes: ["tray", "pill"],
   });
 

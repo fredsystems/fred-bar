@@ -67,7 +67,7 @@ volumeState.subscribe(() => {});
  * ----------------------------- */
 export function VolumePill(): Gtk.Box {
   const box = new Gtk.Box({
-    spacing: 6,
+    spacing: 0,
     css_classes: ["volume-pill", "pill"],
   });
 

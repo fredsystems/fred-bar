@@ -59,7 +59,11 @@ git fetch --quiet || true
 behind="$(git rev-list --count HEAD.."$upstream" 2>/dev/null || echo 0)"
 
 if ((behind > 0)); then
-    json "󰏗" "updates" "Config behind upstream by $behind commit(s)"
+    if ((behind == 1)); then
+        json "󰏗" "updates" "Config behind upstream by 1 commit"
+    else
+        json "󰏗" "updates" "Config behind upstream by $behind commits"
+    fi
     exit 0
 fi
 

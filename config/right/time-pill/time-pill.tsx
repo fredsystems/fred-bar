@@ -100,7 +100,7 @@ export function TimePill(): Gtk.Button {
 
   const clocksBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
-    spacing: 6,
+    spacing: 0,
   });
 
   popRoot.append(title);

@@ -17,7 +17,7 @@ export function WindowWorkspacesPill(): Gtk.Box {
   revealer.set_child(workspaces);
 
   const box = new Gtk.Box({
-    spacing: 6,
+    spacing: 0,
     css_classes: ["pill", "window-workspaces"],
     halign: Gtk.Align.CENTER,
     valign: Gtk.Align.CENTER,

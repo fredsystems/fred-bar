@@ -52,7 +52,7 @@ export function BatteryPill(): Gtk.Box {
   let currentClass = "battery-good";
 
   const box = new Gtk.Box({
-    spacing: 6,
+    spacing: 0,
     css_classes: ["battery-pill", "pill"],
   });
 

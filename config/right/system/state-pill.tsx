@@ -21,12 +21,12 @@ function tooltipLineMarkup(s: SystemSignal): string {
   const color = SEVERITY_COLOR[s.severity] ?? SEVERITY_COLOR.idle;
   const summary = GLib.markup_escape_text(s.summary, -1);
 
-  return `<span foreground="${color}">${icon}</span> ${summary}`;
+  return `<span foreground="${color}">${icon}</span>  ${summary}`;
 }
 
 export function StatePill(): Gtk.Box {
   const box = new Gtk.Box({
-    spacing: 6,
+    spacing: 0,
     css_classes: ["state-pill", "pill", "state-idle"],
   });
 
