@@ -4,6 +4,14 @@ import Gtk from "gi://Gtk?version=4.0";
 import { attachTooltip } from "helpers/tooltip";
 
 /* -----------------------------
+ * Type Extensions
+ * ----------------------------- */
+
+interface BatteryDeviceWithState extends Battery.Device {
+  state: number;
+}
+
+/* -----------------------------
  * Helpers
  * ----------------------------- */
 
@@ -40,7 +48,7 @@ function iconFor(b: Battery.Device, p: number | null): string {
   }
 
   // State 1 = Charging
-  if ((b as any).state === 1) {
+  if ((b as BatteryDeviceWithState).state === 1) {
     if (p === null) return "󰂄";
     if (p <= 10) return "󰢜";
     if (p <= 20) return "󰂆";
@@ -70,7 +78,11 @@ function iconFor(b: Battery.Device, p: number | null): string {
 
 function batteryClass(b: Battery.Device, p: number | null): string {
   // State 1 = Charging, State 4 = Fully charged
-  if (isCharged(b, p) || (b as any).state === 1 || (p !== null && p >= 90))
+  if (
+    isCharged(b, p) ||
+    (b as BatteryDeviceWithState).state === 1 ||
+    (p !== null && p >= 90)
+  )
     return "battery-good";
   if (p !== null && p >= 50) return "battery-warn";
   if (p !== null && p >= 20) return "battery-low";
@@ -149,7 +161,7 @@ export function BatteryPill(): Gtk.Box {
 
       if (isCharged(battery, p)) {
         lines.push("Fully Charged");
-      } else if ((battery as any).state === 1) {
+      } else if ((battery as BatteryDeviceWithState).state === 1) {
         lines.push("Charging");
         lines.push(`Time to full: ${formatTime(battery.time_to_full)}`);
       } else {

@@ -136,7 +136,9 @@ export function VolumePill(): Gtk.Box {
     // Disconnect old handlers from previous speaker
     const oldSpeaker = audio.default_speaker;
     if (oldSpeaker) {
-      currentSpeakerHandlers.forEach((id) => oldSpeaker.disconnect(id));
+      currentSpeakerHandlers.forEach((id) => {
+        oldSpeaker.disconnect(id);
+      });
     }
     currentSpeakerHandlers = [];
 
@@ -224,7 +226,9 @@ export function VolumePill(): Gtk.Box {
     // Disconnect speaker-level signals
     const speaker = audio.default_speaker;
     if (speaker) {
-      currentSpeakerHandlers.forEach((id) => speaker.disconnect(id));
+      currentSpeakerHandlers.forEach((id) => {
+        speaker.disconnect(id);
+      });
     }
   };
 

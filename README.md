@@ -177,20 +177,20 @@ Each widget in fredbar follows a consistent pattern:
 
 fredbar leverages the following Astal packages for native system integration:
 
-| Package | Purpose | Widget(s) |
-|---------|---------|-----------|
-| `astal.hyprland` | Hyprland compositor integration | Workspaces, window titles |
-| `astal.tray` | System tray protocol | System tray |
-| `astal.battery` | UPower battery monitoring | Battery pill |
-| `astal.network` | NetworkManager integration | Network pill |
-| `astal.wireplumber` | WirePlumber/PipeWire audio | Volume pill, media detection |
-| `astal.mpris` | MPRIS media player protocol | Media player detection |
+| Package             | Purpose                         | Widget(s)                    |
+| ------------------- | ------------------------------- | ---------------------------- |
+| `astal.hyprland`    | Hyprland compositor integration | Workspaces, window titles    |
+| `astal.tray`        | System tray protocol            | System tray                  |
+| `astal.battery`     | UPower battery monitoring       | Battery pill                 |
+| `astal.network`     | NetworkManager integration      | Network pill                 |
+| `astal.wireplumber` | WirePlumber/PipeWire audio      | Volume pill, media detection |
+| `astal.mpris`       | MPRIS media player protocol     | Media player detection       |
 
 All widgets use **reactive programming** - they subscribe to GObject signals and update automatically when system state changes. No polling required!
 
 ### Project Structure
 
-```
+```text
 config/
 ├── app.tsx                    # Main application entry point
 ├── style.css                  # Global styles and Catppuccin theme
@@ -228,12 +228,14 @@ config/
 **File**: `config/right/network/network.tsx`
 
 Uses `AstalNetwork` to monitor network connectivity:
+
 - Displays WiFi SSID with signal strength icons
 - Shows "Ethernet" for wired connections
 - Updates instantly on network changes (no polling)
 - Color-coded: default gray when connected, red when disconnected
 
 **Icons**:
+
 - 󰤨 󰤥 󰤢 󰤟 󰤯 - WiFi signal strength
 - 󰈀 - Ethernet
 - 󰤮 - Disconnected
@@ -243,12 +245,14 @@ Uses `AstalNetwork` to monitor network connectivity:
 **File**: `config/right/speaker-volume/volume.tsx`
 
 Uses `AstalWp` (WirePlumber) for audio control:
+
 - **Scroll** to adjust volume (5% increments)
 - **Click** to toggle mute
 - Shows volume icon + percentage
 - Instant updates when volume changes externally
 
 **Icons**:
+
 - 󰝟 - Muted
 - 󰕿 - Low (0-20%)
 - 󰖀 - Medium (21-60%)
@@ -259,6 +263,7 @@ Uses `AstalWp` (WirePlumber) for audio control:
 **File**: `config/right/battery/battery.tsx`
 
 Uses `AstalBattery` for power monitoring:
+
 - Shows percentage and charging icon
 - Color-coded by charge level:
   - Green: >90% or charging
@@ -272,6 +277,7 @@ Uses `AstalBattery` for power monitoring:
 **File**: `config/right/system/state-pill.tsx`
 
 Aggregates multiple system signals:
+
 - **Media playback** - Detects active audio/microphone via AstalWp
 - **Media players** - Shows playing media via AstalMpris
 - **Idle inhibitors** - D-Bus queries to systemd-logind
@@ -284,6 +290,7 @@ The pill shows the highest-priority active state with appropriate icon and color
 fredbar uses direct D-Bus communication for systemd integration:
 
 **Idle Inhibit Detection** (`config/right/system/state/modules/idleInhibit.tsx`):
+
 - Queries `org.freedesktop.login1.Manager.ListInhibitors`
 - Parses inhibitor tuples directly (no shell scripts!)
 - Filters for block-mode idle/sleep inhibitors
@@ -296,6 +303,7 @@ This approach is more efficient and reliable than parsing `systemd-inhibit` outp
 Only **one script** remains in fredbar:
 
 **`waybar-updates.sh`**: NixOS-specific update detection
+
 - Checks `/run/reboot-required` for pending reboots
 - Monitors git repository for upstream changes
 - Custom logic that doesn't have an Astal equivalent
@@ -308,11 +316,13 @@ All other monitoring (audio, network, battery, idle inhibitors) uses native Asta
 fredbar uses a semantic CSS class system:
 
 **Pill states**:
+
 - `.network-connected`, `.battery-good` - Normal operation (gray/green)
 - `.battery-warn`, `.battery-low` - Warning states (yellow/orange)
 - `.network-error`, `.battery-critical` - Error states (red)
 
 **State severity**:
+
 - `.state-idle` - No attention needed (muted colors)
 - `.state-info` - Informational (blue)
 - `.state-warn` - Attention recommended (yellow)

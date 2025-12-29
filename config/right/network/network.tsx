@@ -1,6 +1,6 @@
 import Network from "gi://AstalNetwork";
-import Gtk from "gi://Gtk?version=4.0";
 import GLib from "gi://GLib";
+import Gtk from "gi://Gtk?version=4.0";
 
 import { attachTooltip } from "helpers/tooltip";
 
@@ -64,7 +64,7 @@ function checkVpnStatus(): { active: boolean; name: string } {
       "nmcli -t -f NAME,TYPE connection show --active",
     );
 
-    if (!success) {
+    if (!success || !stdout) {
       return { active: false, name: "" };
     }
 
@@ -80,7 +80,7 @@ function checkVpnStatus(): { active: boolean; name: string } {
     }
 
     return { active: false, name: "" };
-  } catch (e) {
+  } catch (_e) {
     return { active: false, name: "" };
   }
 }

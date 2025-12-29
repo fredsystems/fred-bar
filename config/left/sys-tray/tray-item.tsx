@@ -2,16 +2,17 @@ import AstalTray from "gi://AstalTray";
 import Gdk from "gi://Gdk?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
 import { attachTooltip } from "helpers/tooltip";
+import { buildCustomMenu } from "./custom-menu";
 
 type TrayItem = AstalTray.TrayItem;
 
 type TrayButton = Gtk.Button & {
-  _popover?: Gtk.PopoverMenu | null;
+  _popover?: Gtk.Popover | null;
   _cleanup?: () => void;
 };
 
 // ---- Global "only one popover open" state ----
-let OPEN_POPOVER: Gtk.PopoverMenu | null = null;
+let OPEN_POPOVER: Gtk.Popover | null = null;
 
 function closeOpenPopover(): void {
   if (!OPEN_POPOVER) return;
@@ -25,20 +26,13 @@ function closeOpenPopover(): void {
   OPEN_POPOVER = null;
 }
 
-function ensurePopover(
-  button: TrayButton,
-  item: TrayItem,
-): Gtk.PopoverMenu | null {
+function ensurePopover(button: TrayButton, item: TrayItem): Gtk.Popover | null {
   if (!item.menu_model || !item.action_group) return null;
 
   if (!button._popover) {
-    const popover = new Gtk.PopoverMenu({
-      menu_model: item.menu_model,
-      has_arrow: false,
-    });
+    const popover = buildCustomMenu(item.menu_model, item.action_group, button);
 
-    popover.insert_action_group("dbusmenu", item.action_group);
-    popover.set_parent(button);
+    popover.set_autohide(true);
 
     popover.connect("closed", () => {
       if (OPEN_POPOVER === popover) OPEN_POPOVER = null;

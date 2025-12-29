@@ -27,29 +27,33 @@ fredbar is built around several core principles:
 ### Development Setup
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/FredSystems/fred-bar.git
    cd fred-bar
    ```
 
 2. Enter the development shell:
+
    ```bash
    nix develop
    ```
 
 3. Run fredbar in development mode:
+
    ```bash
    ags run -d config
    ```
 
 The dev shell provides:
+
 - AGS with all Astal packages
 - Linting and formatting tools
 - Runtime dependencies for scripts
 
 ### Project Structure
 
-```
+```text
 config/
 ├── app.tsx                    # Entry point - creates bars for all monitors
 ├── style.css                  # Global styles (Catppuccin Mocha theme)
@@ -91,46 +95,46 @@ import { attachTooltip } from "helpers/tooltip";
  */
 export function MyWidget(): Gtk.Box {
   const service = SomeAstal.get_default();
-  
+
   // 1. Create container
   const box = new Gtk.Box({
     spacing: 4,
     css_classes: ["my-widget", "pill"],
   });
-  
+
   // 2. Create child widgets
   const icon = new Gtk.Label({ label: "" });
   const label = new Gtk.Label({ label: "" });
-  
+
   box.append(icon);
   box.append(label);
-  
+
   // 3. Define update function
   function update(): void {
     // Read from Astal service
     // Update widget properties
   }
-  
+
   // 4. Initial render
   update();
-  
+
   // 5. Subscribe to signals
   const handlerId = service.connect("notify::some-property", update);
-  
+
   // 6. Add event handlers (optional)
   // scroll, click, etc.
-  
+
   // 7. Attach tooltip
   attachTooltip(box, {
     text: () => "Tooltip content",
     classes: () => ["my-widget"],
   });
-  
+
   // 8. Cleanup handler
   (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     service.disconnect(handlerId);
   };
-  
+
   return box;
 }
 ```
@@ -140,6 +144,7 @@ export function MyWidget(): Gtk.Box {
 #### 1. Use Astal Libraries
 
 **DO:**
+
 ```typescript
 import Network from "gi://AstalNetwork";
 
@@ -149,6 +154,7 @@ const ssid = wifi.ssid;
 ```
 
 **DON'T:**
+
 ```typescript
 const ssid = await execAsync(["nmcli", "-t", "-f", "SSID", "dev", "wifi"]);
 ```
@@ -156,6 +162,7 @@ const ssid = await execAsync(["nmcli", "-t", "-f", "SSID", "dev", "wifi"]);
 #### 2. Reactive Updates
 
 **DO:**
+
 ```typescript
 function update(): void {
   label.label = service.some_property;
@@ -165,6 +172,7 @@ const id = service.connect("notify::some-property", update);
 ```
 
 **DON'T:**
+
 ```typescript
 setInterval(() => {
   label.label = service.some_property;
@@ -174,6 +182,7 @@ setInterval(() => {
 #### 3. Cleanup Handlers
 
 **DO:**
+
 ```typescript
 (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
   service.disconnect(handlerId);
@@ -184,6 +193,7 @@ setInterval(() => {
 ```
 
 **DON'T:**
+
 ```typescript
 // Forget to disconnect - causes memory leaks!
 return box;
@@ -192,6 +202,7 @@ return box;
 #### 4. Semantic CSS Classes
 
 **DO:**
+
 ```typescript
 // State-based classes
 box.add_css_class("network-connected");
@@ -202,6 +213,7 @@ box.add_css_class("state-error");
 ```
 
 **DON'T:**
+
 ```typescript
 // Hardcoded styles
 box.set_css_classes(["red-border", "big-text"]);
@@ -209,14 +221,14 @@ box.set_css_classes(["red-border", "big-text"]);
 
 ### Available Astal Packages
 
-| Package | Import | Purpose |
-|---------|--------|---------|
-| AstalBattery | `gi://AstalBattery` | UPower battery monitoring |
-| AstalNetwork | `gi://AstalNetwork` | NetworkManager integration |
-| AstalWp | `gi://AstalWp` | WirePlumber/PipeWire audio |
-| AstalMpris | `gi://AstalMpris` | MPRIS media players |
-| AstalTray | `gi://AstalTray` | System tray protocol |
-| AstalHyprland | `gi://AstalHyprland` | Hyprland compositor |
+| Package       | Import               | Purpose                    |
+| ------------- | -------------------- | -------------------------- |
+| AstalBattery  | `gi://AstalBattery`  | UPower battery monitoring  |
+| AstalNetwork  | `gi://AstalNetwork`  | NetworkManager integration |
+| AstalWp       | `gi://AstalWp`       | WirePlumber/PipeWire audio |
+| AstalMpris    | `gi://AstalMpris`    | MPRIS media players        |
+| AstalTray     | `gi://AstalTray`     | System tray protocol       |
+| AstalHyprland | `gi://AstalHyprland` | Hyprland compositor        |
 
 To add a new Astal package, update `flake.nix`:
 
@@ -249,17 +261,15 @@ Apply semantic classes to widgets:
 
 ```typescript
 // Pill base
-css_classes: ["my-widget", "pill"]
-
 // State classes (mutually exclusive)
-.network-connected   // Normal operation
-.network-error       // Error state
-
-// Severity classes (for system state)
-.state-idle         // Muted
-.state-info         // Blue
-.state-warn         // Yellow
-.state-error        // Red
+css_classes: ["my-widget", "pill"].network -
+  connected.network - // Normal operation
+  // Severity classes (for system state)
+  error.state - // Error state
+  idle.state - // Muted
+  info.state - // Blue
+  warn.state - // Yellow
+  error; // Red
 ```
 
 ### Tooltip Theming
@@ -274,6 +284,7 @@ attachTooltip(box, {
 ```
 
 Tooltip CSS automatically adds `-tooltip` suffix:
+
 - `.battery-warn` → `.battery-warn-tooltip`
 
 ## D-Bus Integration
@@ -287,12 +298,12 @@ import GLib from "gi://GLib";
 const connection = Gio.DBus.system; // or Gio.DBus.session
 
 const result = connection.call_sync(
-  "org.freedesktop.ServiceName",    // Service
-  "/path/to/object",                 // Object path
-  "org.freedesktop.Interface",       // Interface
-  "MethodName",                      // Method
-  new GLib.Variant("(s)", ["arg"]),  // Parameters
-  GLib.VariantType.new("(s)"),       // Return type
+  "org.freedesktop.ServiceName", // Service
+  "/path/to/object", // Object path
+  "org.freedesktop.Interface", // Interface
+  "MethodName", // Method
+  new GLib.Variant("(s)", ["arg"]), // Parameters
+  GLib.VariantType.new("(s)"), // Return type
   Gio.DBusCallFlags.NONE,
   -1,
   null,
@@ -306,15 +317,15 @@ See `config/right/system/state/modules/idleInhibit.tsx` for a complete example.
 
 ## Nerd Fonts
 
-fredbar uses Nerd Fonts for icons. Find icons at: https://www.nerdfonts.com/cheat-sheet
+fredbar uses Nerd Fonts for icons. Find icons at: <https://www.nerdfonts.com/cheat-sheet>
 
 Always document icon codes in comments:
 
 ```typescript
 const ICONS = {
-  wifi: "󰤨",      // nf-md-wifi_strength_4
-  ethernet: "󰈀",  // nf-md-ethernet
-  offline: "󰤮",   // nf-md-wifi_strength_off
+  wifi: "󰤨", // nf-md-wifi_strength_4
+  ethernet: "󰈀", // nf-md-ethernet
+  offline: "󰤮", // nf-md-wifi_strength_off
 };
 ```
 
@@ -323,6 +334,7 @@ const ICONS = {
 ### Manual Testing
 
 1. Start fredbar in dev mode:
+
    ```bash
    ags run -d config
    ```
@@ -332,10 +344,11 @@ const ICONS = {
 3. Restart AGS (it auto-reloads on file changes)
 
 4. Check logs:
+
    ```bash
    # Development
    # Watch terminal output
-   
+
    # Production
    journalctl --user -u fredbar -f
    ```
@@ -423,12 +436,14 @@ pre-commit run --all-files
 ### Memory Leaks
 
 **Problem:** Forgot to disconnect signals
+
 ```typescript
 const id = service.connect("notify", update);
 return box; // LEAK!
 ```
 
 **Solution:** Always add cleanup
+
 ```typescript
 (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
   service.disconnect(id);
@@ -438,11 +453,13 @@ return box; // LEAK!
 ### Polling Instead of Signals
 
 **Problem:** Polling for changes
+
 ```typescript
 setInterval(() => checkState(), 1000);
 ```
 
 **Solution:** Use GObject signals
+
 ```typescript
 service.connect("notify::property", update);
 ```
@@ -450,11 +467,13 @@ service.connect("notify::property", update);
 ### Hardcoded Paths
 
 **Problem:** Absolute paths in code
+
 ```typescript
 const config = "/home/user/.config/fredbar/config.json";
 ```
 
 **Solution:** Use GLib path utilities
+
 ```typescript
 import GLib from "gi://GLib";
 const configDir = GLib.getenv("AGS_CONFIG_DIR");
@@ -464,12 +483,14 @@ const config = GLib.build_filenamev([configDir, "config.json"]);
 ### Race Conditions
 
 **Problem:** Assuming service is ready
+
 ```typescript
 const network = Network.get_default();
 const ssid = network.wifi.ssid; // wifi might be null!
 ```
 
 **Solution:** Check for null/undefined
+
 ```typescript
 const network = Network.get_default();
 const wifi = network.wifi;
@@ -483,7 +504,7 @@ if (wifi && wifi.ssid) {
 - [AGS Documentation](https://aylur.github.io/ags-docs/)
 - [GTK4 Documentation](https://docs.gtk.org/gtk4/)
 - [GObject Documentation](https://docs.gtk.org/gobject/)
-- [Nerd Fonts Cheat Sheet](https://www.nerdfonts.com/cheat-sheet)
+- Icons: [Nerd Fonts Cheat Sheet](https://www.nerdfonts.com/cheat-sheet)
 - [Catppuccin Theme](https://github.com/catppuccin/catppuccin)
 - [D-Bus Specification](https://dbus.freedesktop.org/doc/dbus-specification.html)
 
