@@ -177,6 +177,9 @@ export function VolumePill(): Gtk.Box {
     const currentVolume = speaker.volume;
     const step = 0.05; // 5% steps (0.05 = 5% of 1.0)
 
+    // change the volume direction for natural scrolling
+    dy = -dy;
+
     if (dy < 0) {
       // Scroll up: increase volume (clamped to 100%)
       speaker.volume = Math.min(1.0, currentVolume + step);
