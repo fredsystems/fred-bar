@@ -64,7 +64,7 @@ export function TimePill(): Gtk.Button {
     transition_type: Gtk.RevealerTransitionType.SLIDE_RIGHT,
     transition_duration: 180, // match your CSS transition vibe
     reveal_child: false,
-    hexpand: true,
+    hexpand: false,
   });
 
   const box = new Gtk.Box({

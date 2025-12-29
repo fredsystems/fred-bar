@@ -58,13 +58,55 @@ function getVolumePercent(audio: Wp.Audio): number {
 
 /**
  * Gets human-readable name of the current audio output device
+ * Extracts user-friendly device type from technical descriptions
  * @param audio - AstalWp Audio instance
  * @returns Descriptive name of the audio sink
  */
 function getSinkName(audio: Wp.Audio): string {
   const speaker = audio.default_speaker;
   if (!speaker) return "No audio device";
-  return speaker.description || "Unknown device";
+
+  const description = speaker.description || "Unknown device";
+
+  // Extract device type from technical descriptions
+  // Examples:
+  //   "Family 17h/19h/1ah HD Audio Controller Speaker" -> "Speaker"
+  //   "HD Audio Controller Headphones" -> "Headphones"
+  //   "Realtek ALC257 Speaker" -> "Speaker"
+  const commonDeviceTypes = [
+    "Headphones",
+    "Speaker",
+    "Speakers",
+    "Headset",
+    "Line Out",
+    "HDMI",
+    "DisplayPort",
+    "Analog Output",
+    "Digital Output",
+  ];
+
+  // Try to find a known device type in the description
+  for (const deviceType of commonDeviceTypes) {
+    if (description.includes(deviceType)) {
+      return deviceType;
+    }
+  }
+
+  // If no known type found, try to clean up the description
+  // Remove common technical prefixes
+  const cleaned = description
+    .replace(/^Family \d+[a-z]\/\d+[a-z]\/\d+[a-z]\s+/i, "") // "Family 17h/19h/1ah "
+    .replace(/^HD Audio Controller\s+/i, "") // "HD Audio Controller "
+    .replace(/^Radeon\s+/i, "") // "Radeon "
+    .replace(/\[.*?\]/g, "") // Remove anything in brackets
+    .trim();
+
+  // If we got something shorter and cleaner, use it
+  if (cleaned.length > 0 && cleaned.length < description.length) {
+    return cleaned;
+  }
+
+  return description;
 }
 
 /* -----------------------------
