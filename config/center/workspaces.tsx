@@ -1,5 +1,7 @@
 import Hyprland from "gi://AstalHyprland";
+import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import Pango from "gi://Pango?version=1.0";
 
 import { resolveAppIcon } from "helpers/icon-resolver";
 
@@ -156,7 +158,19 @@ export function Workspaces(): Gtk.Box {
     valign: Gtk.Align.CENTER,
   });
 
+  let popovers: Gtk.Popover[] = [];
+
   function render() {
+    // Clean up old popovers BEFORE clearing children (synchronously)
+    for (const popover of popovers) {
+      try {
+        popover.unparent();
+      } catch {
+        /* ignore */
+      }
+    }
+    popovers = [];
+
     // Clear children safely
     for (let child = box.get_first_child(); child; ) {
       const next = child.get_next_sibling();
@@ -188,6 +202,7 @@ export function Workspaces(): Gtk.Box {
       // Add workspace preview popover
       const preview = createWorkspacePreview(ws);
       preview.set_parent(button);
+      popovers.push(preview);
 
       // Show preview on hover
       const hoverController = new Gtk.EventControllerMotion();
