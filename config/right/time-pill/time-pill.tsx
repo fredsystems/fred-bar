@@ -47,16 +47,12 @@ export function TimePill(): Gtk.Button {
     xalign: 0.5,
   });
 
-  shortLabel.set_width_chars(8);
   shortLabel.set_max_width_chars(8);
 
   const longLabel = new Gtk.Label({
     css_classes: ["time-label", "time-long"],
     xalign: 0.5,
   });
-
-  longLabel.set_max_width_chars(20);
-  longLabel.set_width_chars(20);
 
   /* ───────── Revealer (the important part) ───────── */
 
@@ -162,7 +158,7 @@ export function TimePill(): Gtk.Button {
     // Don’t change the main label while popover is open
     shortLabel.set_label(now.format("%H:%M:%S") ?? "");
     if (expanded) {
-      longLabel.set_label(now.format("%A, %B %e, %Y") ?? "");
+      longLabel.set_label(now.format(" %A, %B %e, %Y") ?? "");
     } else {
       longLabel.set_label("");
     }

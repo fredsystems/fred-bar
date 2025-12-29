@@ -4,8 +4,8 @@
 
 ### Spacing Issues
 
-- [ ] **Window title pill** - Too much spacing between icon and window title text
-- [ ] **Time pill hover** - Too much space between time and date when calendar label is expanded
+- [x] **Window title pill** - Too much spacing between icon and window title text
+- [x] **Time pill hover** - Too much space between time and date when calendar label is expanded
 
 ### Interaction Issues
 
