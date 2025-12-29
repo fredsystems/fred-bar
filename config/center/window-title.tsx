@@ -1,33 +1,13 @@
 import Hyprland from "gi://AstalHyprland";
-import Gio from "gi://Gio";
 import Gtk from "gi://Gtk?version=4.0";
 import Pango from "gi://Pango?version=1.0";
+
+import { resolveAppIcon } from "helpers/icon-resolver";
 
 const hypr = Hyprland.get_default();
 
 let currentClient: Hyprland.Client | null = null;
 let titleHandlerId: number | null = null;
-
-function resolveAppIcon(appClass?: string): Gio.Icon | null {
-  if (!appClass) return null;
-
-  // 1️⃣ Try matching desktop file
-  const appInfo = Gio.AppInfo.get_all().find((app) =>
-    app.get_id()?.toLowerCase().includes(appClass.toLowerCase()),
-  );
-
-  if (appInfo) {
-    const icon = appInfo.get_icon();
-    if (icon) return icon;
-  }
-
-  // 2️⃣ Fallback: treat class as icon name
-  try {
-    return Gio.ThemedIcon.new(appClass);
-  } catch {
-    return null;
-  }
-}
 
 export function WindowTitle(): Gtk.Box {
   let label: Gtk.Label;
