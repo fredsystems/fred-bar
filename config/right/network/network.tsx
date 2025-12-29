@@ -1,5 +1,6 @@
 import Network from "gi://AstalNetwork";
 import Gtk from "gi://Gtk?version=4.0";
+import GLib from "gi://GLib";
 
 import { attachTooltip } from "helpers/tooltip";
 
@@ -19,6 +20,7 @@ import { attachTooltip } from "helpers/tooltip";
  * Icons used (Nerd Fonts):
  * - 󰤨 󰤥 󰤢 󰤟 󰤯 WiFi signal strength (excellent to minimal)
  * - 󰈀 Ethernet
+ * - 󰖂 VPN
  * - 󰤮 Disconnected
  */
 
@@ -48,20 +50,69 @@ function disconnectedIcon(): string {
   return "󰤮";
 }
 
+function vpnIcon(): string {
+  return "󰖂";
+}
+
+/**
+ * Checks if a VPN connection is active using nmcli
+ * @returns Object with VPN status and connection name
+ */
+function checkVpnStatus(): { active: boolean; name: string } {
+  try {
+    const [success, stdout] = GLib.spawn_command_line_sync(
+      "nmcli -t -f NAME,TYPE connection show --active",
+    );
+
+    if (!success) {
+      return { active: false, name: "" };
+    }
+
+    const decoder = new TextDecoder();
+    const output = decoder.decode(stdout);
+    const lines = output.split("\n");
+
+    for (const line of lines) {
+      const [name, type] = line.split(":");
+      if (type === "vpn") {
+        return { active: true, name: name || "VPN" };
+      }
+    }
+
+    return { active: false, name: "" };
+  } catch (e) {
+    return { active: false, name: "" };
+  }
+}
+
 /**
  * Determines current network state and returns display info
  * @param network - AstalNetwork.Network instance
  * @returns Object with icon, label, and connection status
  */
-function getNetworkInfo(network: Network.Network): {
+function getNetworkInfo(
+  network: Network.Network,
+  vpnStatus: { active: boolean; name: string },
+): {
   icon: string;
   label: string;
   connected: boolean;
+  vpnActive: boolean;
 } {
   const wifi = network.wifi;
   const wired = network.wired;
 
-  // Priority 1: WiFi connection
+  // Priority 1: VPN connection (show VPN regardless of underlying connection)
+  if (vpnStatus.active) {
+    return {
+      icon: vpnIcon(),
+      label: vpnStatus.name,
+      connected: true,
+      vpnActive: true,
+    };
+  }
+
+  // Priority 2: WiFi connection
   if (wifi && wifi.internet === Network.Internet.CONNECTED) {
     const ssid = wifi.ssid || "Unknown";
     const strength = wifi.strength;
@@ -69,15 +120,17 @@ function getNetworkInfo(network: Network.Network): {
       icon: wifiIcon(strength),
       label: ssid,
       connected: true,
+      vpnActive: false,
     };
   }
 
-  // Priority 2: Ethernet connection
+  // Priority 3: Ethernet connection
   if (wired && wired.internet === Network.Internet.CONNECTED) {
     return {
       icon: ethernetIcon(),
       label: "Ethernet",
       connected: true,
+      vpnActive: false,
     };
   }
 
@@ -86,6 +139,7 @@ function getNetworkInfo(network: Network.Network): {
     icon: disconnectedIcon(),
     label: "No Connection",
     connected: false,
+    vpnActive: false,
   };
 }
 
@@ -111,6 +165,9 @@ export function NetworkPill(): Gtk.Box {
   // Track current CSS class for tooltip theming
   let currentClass = "network-connected";
 
+  // Track VPN status
+  let vpnStatus = checkVpnStatus();
+
   // Create container box with pill styling
   const box = new Gtk.Box({
     spacing: 4,
@@ -127,7 +184,10 @@ export function NetworkPill(): Gtk.Box {
    * Updates widget display based on current network state
    */
   function update(): void {
-    const info = getNetworkInfo(network);
+    // Check VPN status
+    vpnStatus = checkVpnStatus();
+
+    const info = getNetworkInfo(network, vpnStatus);
 
     icon.label = info.icon;
     label.label = info.label;
@@ -149,6 +209,17 @@ export function NetworkPill(): Gtk.Box {
   const wifiHandler = network.wifi?.connect("notify", update);
   const wiredHandler = network.wired?.connect("notify", update);
 
+  // Poll VPN status every 3 seconds since AstalNetwork doesn't expose VPN
+  const vpnPollInterval = setInterval(() => {
+    const newVpnStatus = checkVpnStatus();
+    if (
+      newVpnStatus.active !== vpnStatus.active ||
+      newVpnStatus.name !== vpnStatus.name
+    ) {
+      update();
+    }
+  }, 3000);
+
   /* -----------------------------
    * Tooltip
    * ----------------------------- */
@@ -163,8 +234,18 @@ export function NetworkPill(): Gtk.Box {
       const wifi = network.wifi;
       const wired = network.wired;
 
+      // VPN details
+      if (vpnStatus.active) {
+        lines.push(`VPN: ${vpnStatus.name}`);
+        // Show underlying connection
+        if (wifi && wifi.internet === Network.Internet.CONNECTED) {
+          lines.push(`Via WiFi: ${wifi.ssid || "Unknown"}`);
+        } else if (wired && wired.internet === Network.Internet.CONNECTED) {
+          lines.push(`Via: Ethernet`);
+        }
+      }
       // WiFi details: SSID, signal strength, frequency, BSSID
-      if (wifi && wifi.internet === Network.Internet.CONNECTED) {
+      else if (wifi && wifi.internet === Network.Internet.CONNECTED) {
         lines.push(`SSID: ${wifi.ssid || "Unknown"}`);
         lines.push(`Signal: ${wifi.strength}%`);
         if (wifi.frequency > 0) {
@@ -206,6 +287,7 @@ export function NetworkPill(): Gtk.Box {
     if (wiredHandler && network.wired) {
       network.wired.disconnect(wiredHandler);
     }
+    clearInterval(vpnPollInterval);
   };
 
   return box;
