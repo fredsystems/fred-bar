@@ -16,6 +16,13 @@ function formatTime(seconds: number): string {
   return `${h}h ${m}m`;
 }
 
+function isCharged(b: Battery.Device, p: number | null): boolean {
+  // Since state and charging are unreliable, use energy_rate
+  // When plugged in at 100%, energy_rate should be 0 or very small positive
+  // When unplugged, energy_rate should be negative (discharging)
+  return p !== null && p >= 100 && b.energy_rate >= 0;
+}
+
 function percent(b: Battery.Device): number | null {
   if (b.energy_full > 0 && b.energy >= 0) {
     return Math.round((b.energy / b.energy_full) * 100);
@@ -27,7 +34,13 @@ function iconFor(b: Battery.Device, p: number | null): string {
   if (!b.is_present) return "";
 
   // https://www.nerdfonts.com/cheat-sheet
-  if (b.charging) {
+  // Fully charged
+  if (isCharged(b, p)) {
+    return "󰂄"; // Charging full icon
+  }
+
+  // State 1 = Charging
+  if ((b as any).state === 1) {
     if (p === null) return "󰂄";
     if (p <= 10) return "󰢜";
     if (p <= 20) return "󰂆";
@@ -56,7 +69,9 @@ function iconFor(b: Battery.Device, p: number | null): string {
 }
 
 function batteryClass(b: Battery.Device, p: number | null): string {
-  if (b.charging || (p !== null && p >= 90)) return "battery-good";
+  // State 1 = Charging, State 4 = Fully charged
+  if (isCharged(b, p) || (b as any).state === 1 || (p !== null && p >= 90))
+    return "battery-good";
   if (p !== null && p >= 50) return "battery-warn";
   if (p !== null && p >= 20) return "battery-low";
   return "battery-critical";
@@ -93,7 +108,13 @@ export function BatteryPill(): Gtk.Box {
     const p = percent(battery);
 
     icon.label = iconFor(battery, p);
-    label.label = p !== null ? `${p}%` : "";
+
+    // Show "Charged" when fully charged, otherwise show percentage
+    if (isCharged(battery, p)) {
+      label.label = "Charged";
+    } else {
+      label.label = p !== null ? `${p}%` : "";
+    }
 
     // Clear previous state classes
     box.remove_css_class("battery-good");
@@ -106,7 +127,12 @@ export function BatteryPill(): Gtk.Box {
   }
 
   update();
-  const handlerId = battery.connect("notify", update);
+  const chargingHandler = battery.connect("notify::charging", update);
+  const energyHandler = battery.connect("notify::energy", update);
+  const stateHandler = battery.connect("notify::state", update);
+
+  // Poll every 2 seconds to catch state changes that don't fire events
+  const pollInterval = setInterval(update, 2000);
 
   /* -----------------------------
    * Tooltip (shares pill class)
@@ -121,7 +147,9 @@ export function BatteryPill(): Gtk.Box {
       const p = percent(battery);
       if (p !== null) lines.push(`Charge: ${p}%`);
 
-      if (battery.charging) {
+      if (isCharged(battery, p)) {
+        lines.push("Fully Charged");
+      } else if ((battery as any).state === 1) {
         lines.push("Charging");
         lines.push(`Time to full: ${formatTime(battery.time_to_full)}`);
       } else {
@@ -145,7 +173,10 @@ export function BatteryPill(): Gtk.Box {
    * ----------------------------- */
 
   (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
-    battery.disconnect(handlerId);
+    battery.disconnect(chargingHandler);
+    battery.disconnect(energyHandler);
+    battery.disconnect(stateHandler);
+    clearInterval(pollInterval);
   };
 
   return box;
