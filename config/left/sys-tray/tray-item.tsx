@@ -1,8 +1,8 @@
 import AstalTray from "gi://AstalTray";
 import Gdk from "gi://Gdk?version=4.0";
+import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 import { attachTooltip } from "helpers/tooltip";
-import { buildCustomMenu } from "./custom-menu";
 
 type TrayItem = AstalTray.TrayItem;
 
@@ -30,9 +30,22 @@ function ensurePopover(button: TrayButton, item: TrayItem): Gtk.Popover | null {
   if (!item.menu_model || !item.action_group) return null;
 
   if (!button._popover) {
-    const popover = buildCustomMenu(item.menu_model, item.action_group, button);
-
+    // Use PopoverMenu but access and manipulate its internal child
+    const popover = Gtk.PopoverMenu.new_from_model(item.menu_model);
+    popover.set_parent(button);
+    popover.set_has_arrow(false);
     popover.set_autohide(true);
+    popover.set_position(Gtk.PositionType.LEFT);
+    popover.add_css_class("tray-menu");
+
+    // Register action group with multiple prefixes to support different tray items
+    // Different apps use different action prefixes (app., unity., indicator., dbusmenu.)
+    if (item.action_group) {
+      popover.insert_action_group("dbusmenu", item.action_group); // dbusmenu. prefix (StatusNotifierItem)
+      popover.insert_action_group("app", item.action_group); // app. prefix
+      popover.insert_action_group("unity", item.action_group); // unity. prefix
+      popover.insert_action_group("indicator", item.action_group); // indicator. prefix
+    }
 
     popover.connect("closed", () => {
       if (OPEN_POPOVER === popover) OPEN_POPOVER = null;
@@ -164,9 +177,8 @@ export function TrayItem(item: TrayItem): TrayButton {
     }
   };
 
-  item.connect("notify::gicon", (event) => {
-    image.set_from_gicon(event.gicon);
-  });
+  // Use GObject property binding to avoid ref count issues with manual updates
+  item.bind_property("gicon", image, "gicon", GObject.BindingFlags.SYNC_CREATE);
 
   return button;
 }

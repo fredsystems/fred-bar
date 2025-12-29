@@ -9,8 +9,8 @@
 
 ### Interaction Issues
 
-- [ ] **Tray pill hover effects** - Inconsistent hover styling (some elements show hover effect, others don't)
-- [ ] **Tray pill menu actions** - Clicking on menu items doesn't trigger their assigned actions
+- [x] **Tray pill hover effects** - Inconsistent hover styling (some elements show hover effect, others don't)
+- [x] **Tray pill menu actions** - Clicking on menu items doesn't trigger their assigned actions
 
 ### Labels & Text
 
