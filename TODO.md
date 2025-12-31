@@ -61,8 +61,12 @@
 **Planned Features**:
 
 - [ ] 🎵 Media player controls (play/pause, track info, scrubbing)
-- [ ] 🔆 Brightness slider
-- [ ] 🔊 Volume sliders (multiple outputs/inputs)
+- [x] 🔆 Brightness slider (auto-detects backlight devices)
+- [x] 🔊 Volume sliders (speaker + microphone)
+- [x] 🎵 Media player with artwork and controls (like swaync)
+- [x] ⚡ System actions (reboot, shutdown, logout with compositor detection)
+- [x] 📡 Connectivity toggles (Bluetooth, WiFi, Ethernet, VPN)
+- [x] 🔋 Power profiles toggle (if supported by CPU)
 - [ ] 📡 Network switcher (WiFi networks, VPN toggle)
 - [ ] 🔔 Notification history
 - [ ] ⚡ Power menu (shutdown/restart/logout/lock)

@@ -1,7 +1,12 @@
 import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import { notificationService } from "services/notifications";
+import { ConnectivityToggles } from "./connectivity-toggles";
+import { MediaPlayer } from "./media-player";
 import { NotificationList } from "./notification-list";
+import { PowerProfilesToggle } from "./power-profiles";
+import { Sliders } from "./sliders";
+import { SystemActions } from "./system-actions";
 
 export function SidebarPanel(): Gtk.Box {
   const container = new Gtk.Box({
@@ -10,8 +15,65 @@ export function SidebarPanel(): Gtk.Box {
     css_classes: ["sidebar-panel"],
   });
 
-  // Header
-  const header = new Gtk.Box({
+  // Main scrolled area
+  const scrolled = new Gtk.ScrolledWindow({
+    vexpand: true,
+    hscrollbar_policy: Gtk.PolicyType.NEVER,
+    vscrollbar_policy: Gtk.PolicyType.AUTOMATIC,
+    css_classes: ["sidebar-scroll"],
+  });
+
+  const contentBox = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 16,
+    css_classes: ["sidebar-content"],
+  });
+
+  // Media Player Section
+  const mediaPlayer = MediaPlayer();
+  contentBox.append(mediaPlayer);
+
+  // Add separator
+  const separator1 = new Gtk.Separator({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    css_classes: ["sidebar-separator"],
+  });
+  contentBox.append(separator1);
+
+  // System Actions Section
+  const systemActions = SystemActions();
+  contentBox.append(systemActions);
+
+  // Connectivity Toggles Section
+  const connectivityToggles = ConnectivityToggles();
+  contentBox.append(connectivityToggles);
+
+  // Power Profiles Section (only if supported)
+  const powerProfiles = PowerProfilesToggle();
+  if (powerProfiles) {
+    contentBox.append(powerProfiles);
+  }
+
+  // Add separator
+  const separator2 = new Gtk.Separator({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    css_classes: ["sidebar-separator"],
+  });
+  contentBox.append(separator2);
+
+  // Sliders Section
+  const sliders = Sliders();
+  contentBox.append(sliders);
+
+  // Add separator before notifications
+  const separator3 = new Gtk.Separator({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    css_classes: ["sidebar-separator"],
+  });
+  contentBox.append(separator3);
+
+  // Notifications Header
+  const notifHeader = new Gtk.Box({
     orientation: Gtk.Orientation.HORIZONTAL,
     spacing: 12,
     css_classes: ["sidebar-header"],
@@ -37,7 +99,7 @@ export function SidebarPanel(): Gtk.Box {
   });
   titleBox.append(countLabel);
 
-  header.append(titleBox);
+  notifHeader.append(titleBox);
 
   // DND toggle button
   const dndButton = new Gtk.Button({
@@ -55,7 +117,7 @@ export function SidebarPanel(): Gtk.Box {
     updateDnd();
   });
 
-  header.append(dndButton);
+  notifHeader.append(dndButton);
 
   // Clear all button
   const clearButton = new Gtk.Button({
@@ -67,20 +129,16 @@ export function SidebarPanel(): Gtk.Box {
     notificationService.dismissAll();
   });
 
-  header.append(clearButton);
+  notifHeader.append(clearButton);
 
-  container.append(header);
-
-  // Separator
-  const separator = new Gtk.Separator({
-    orientation: Gtk.Orientation.HORIZONTAL,
-    css_classes: ["sidebar-separator"],
-  });
-  container.append(separator);
+  contentBox.append(notifHeader);
 
   // Notification list
   const notifList = NotificationList();
-  container.append(notifList);
+  contentBox.append(notifList);
+
+  scrolled.set_child(contentBox);
+  container.append(scrolled);
 
   function updateCount(): void {
     const count = notificationService.getPendingCount();
@@ -117,7 +175,13 @@ export function SidebarPanel(): Gtk.Box {
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     unsubscribe();
-    (notifList as Gtk.Widget & { _cleanup?: () => void })._cleanup?.();
+    (mediaPlayer as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
+    (
+      connectivityToggles as Gtk.Widget & { _cleanup?: () => void }
+    )?._cleanup?.();
+    (powerProfiles as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
+    (sliders as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
+    (notifList as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
   };
 
   return container;
