@@ -255,20 +255,40 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   }
 
   function updatePosition(): void {
-    const length = player.length;
-    const position = player.position;
+    // Get position - this seems to be working correctly
+    const position = player.position ?? 0;
 
-    if (length > 0) {
-      positionScale.set_range(0, length);
-      if (!isManuallyDragging) {
-        positionScale.set_value(position);
+    // Try to get the actual track length from the GLib.Variant metadata
+    const metadataVariant = (player as unknown as { metadata?: any }).metadata;
+    let length = 0;
+
+    if (metadataVariant && typeof metadataVariant.lookup_value === "function") {
+      // Try to lookup the mpris:length key from the variant
+      const lengthVariant = metadataVariant.lookup_value("mpris:length", null);
+      if (lengthVariant) {
+        // Length is in microseconds, convert to seconds
+        length = lengthVariant.get_int64() / 1000000;
       }
-      currentTimeLabel.label = formatTime(position);
-      totalTimeLabel.label = formatTime(length);
-      positionBox.visible = true;
-    } else {
-      positionBox.visible = false;
     }
+
+    // Fallback: try player.length (some players like Firefox don't provide metadata)
+    if (length <= 0 || !Number.isFinite(length)) {
+      length = player.length ?? 0;
+    }
+
+    // If we still don't have a valid length, hide the slider
+    if (length <= 0 || !Number.isFinite(length)) {
+      positionBox.visible = false;
+      return;
+    }
+
+    positionScale.set_range(0, length);
+    if (!isManuallyDragging) {
+      positionScale.set_value(position);
+    }
+    currentTimeLabel.label = formatTime(position);
+    totalTimeLabel.label = formatTime(length);
+    positionBox.visible = true;
   }
 
   function updateControls(): void {
@@ -333,6 +353,11 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
 
   // Connect to player signals
   const metadataHandler = player.connect("notify::title", update);
+  const metadataChangeHandler = player.connect("notify::metadata", () => {
+    update();
+    updatePosition();
+  });
+  const lengthHandler = player.connect("notify::length", updatePosition);
   const positionHandler = player.connect("notify::position", updatePosition);
   const statusHandler = player.connect(
     "notify::playback-status",
@@ -352,6 +377,8 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     player.disconnect(metadataHandler);
+    player.disconnect(metadataChangeHandler);
+    player.disconnect(lengthHandler);
     player.disconnect(positionHandler);
     player.disconnect(statusHandler);
     player.disconnect(shuffleHandler);
@@ -415,10 +442,26 @@ export function MediaPlayer(): Gtk.Box {
   const addHandler = mpris.connect("player-added", update);
   const removeHandler = mpris.connect("player-closed", update);
 
+  // Poll for active player changes (when switching between existing players)
+  const pollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+    const players = mpris.get_players();
+    if (players.length > 1) {
+      // Multiple players - check if active one changed
+      const activePlayer = players.find(
+        (p) => p.playback_status === Mpris.PlaybackStatus.PLAYING,
+      );
+      if (activePlayer) {
+        update(); // Rebuild widget for new active player
+      }
+    }
+    return true;
+  });
+
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     mpris.disconnect(addHandler);
     mpris.disconnect(removeHandler);
+    GLib.source_remove(pollInterval);
 
     // Cleanup player widgets
     let child = playerContainer.get_first_child();
