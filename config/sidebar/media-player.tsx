@@ -1,6 +1,7 @@
 import Mpris from "gi://AstalMpris";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { attachTooltip } from "helpers/tooltip";
 
 const mpris = Mpris.get_default();
 
@@ -154,18 +155,20 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   // Shuffle button
   const shuffleBtn = new Gtk.Button({
     css_classes: ["media-control-btn", "media-shuffle-btn"],
-    tooltip_text: "Shuffle",
   });
   const shuffleIcon = new Gtk.Label({ label: "󰒟" });
   shuffleBtn.set_child(shuffleIcon);
   // Shuffle is typically read-only in MPRIS, so we just display the state
   shuffleBtn.sensitive = false;
+  attachTooltip(shuffleBtn, {
+    text: () => "Shuffle",
+    classes: () => ["media-control"],
+  });
   controlsBox.append(shuffleBtn);
 
   // Previous button
   const prevBtn = new Gtk.Button({
     css_classes: ["media-control-btn"],
-    tooltip_text: "Previous",
   });
   const prevIcon = new Gtk.Label({ label: "󰒮" });
   prevBtn.set_child(prevIcon);
@@ -174,12 +177,15 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
       player.previous();
     }
   });
+  attachTooltip(prevBtn, {
+    text: () => "Previous",
+    classes: () => ["media-control"],
+  });
   controlsBox.append(prevBtn);
 
   // Play/Pause button
   const playPauseBtn = new Gtk.Button({
     css_classes: ["media-control-btn", "media-play-pause-btn"],
-    tooltip_text: "Play/Pause",
   });
   const playPauseIcon = new Gtk.Label({ label: "󰐊" });
   playPauseBtn.set_child(playPauseIcon);
@@ -188,12 +194,15 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
       player.play_pause();
     }
   });
+  attachTooltip(playPauseBtn, {
+    text: () => "Play/Pause",
+    classes: () => ["media-control"],
+  });
   controlsBox.append(playPauseBtn);
 
   // Next button
   const nextBtn = new Gtk.Button({
     css_classes: ["media-control-btn"],
-    tooltip_text: "Next",
   });
   const nextIcon = new Gtk.Label({ label: "󰒭" });
   nextBtn.set_child(nextIcon);
@@ -202,17 +211,24 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
       player.next();
     }
   });
+  attachTooltip(nextBtn, {
+    text: () => "Next",
+    classes: () => ["media-control"],
+  });
   controlsBox.append(nextBtn);
 
   // Loop button
   const loopBtn = new Gtk.Button({
     css_classes: ["media-control-btn", "media-loop-btn"],
-    tooltip_text: "Loop",
   });
   const loopIcon = new Gtk.Label({ label: "󰑐" });
   loopBtn.set_child(loopIcon);
   // Loop status is typically read-only in MPRIS, so we just display the state
   loopBtn.sensitive = false;
+  attachTooltip(loopBtn, {
+    text: () => "Loop",
+    classes: () => ["media-control"],
+  });
   controlsBox.append(loopBtn);
 
   container.append(controlsBox);

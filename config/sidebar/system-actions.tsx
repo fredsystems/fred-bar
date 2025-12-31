@@ -89,7 +89,6 @@ export function SystemActions(): Gtk.Box {
   // Logout button
   const logoutBtn = new Gtk.Button({
     css_classes: ["system-action-btn", "system-logout-btn"],
-    tooltip_text: "Log Out",
   });
   const logoutBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -115,7 +114,6 @@ export function SystemActions(): Gtk.Box {
   // Reboot button
   const rebootBtn = new Gtk.Button({
     css_classes: ["system-action-btn", "system-reboot-btn"],
-    tooltip_text: "Reboot",
   });
   const rebootBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -141,7 +139,6 @@ export function SystemActions(): Gtk.Box {
   // Shutdown button
   const shutdownBtn = new Gtk.Button({
     css_classes: ["system-action-btn", "system-shutdown-btn"],
-    tooltip_text: "Shutdown",
   });
   const shutdownBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,

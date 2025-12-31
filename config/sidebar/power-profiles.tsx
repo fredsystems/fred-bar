@@ -40,7 +40,6 @@ export function PowerProfilesToggle(): Gtk.Box | null {
 
     const btn = new Gtk.Button({
       css_classes: ["power-profile-btn"],
-      tooltip_text: config.label,
     });
 
     const btnBox = new Gtk.Box({

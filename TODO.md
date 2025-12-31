@@ -43,8 +43,16 @@
 
 ### System Status Control Center
 
+- [x] Hover affects on the buttons is off.
+  - [x] If the button has a colored background, there is no hover effect.
+  - [x] Logout/Reboot/Shutdown have a different (and better) hover effect than BT/Wifi/Ethernet/etc
+  - [x] All buttons now have consistent hover effects with translateY(-2px) lift
+- [x] Tool tips
+  - [x] Remove tool tip from buttons with text (Logout/Reboot/Shutdown, BT/WiFi/VPN/Ethernet, Power Profiles)
+  - [x] Media player control buttons retain tooltips (they have no text labels)
+  - [x] Tooltips now styled with surface0 background and blue rounded border matching sidebar widgets
 - [ ] Need to improve dismissing
-  - [ ] Clicking outside of the panel should dismiss it
+  - [ ] Clicking outside of the panel should dismiss it (without blocking events inside the panel)
   - [ ] Sometimes clicking the system status pill does not dismiss the panel
 
 **Vision**: Click on system status pill to open a comprehensive control center

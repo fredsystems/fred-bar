@@ -3,6 +3,7 @@
 // ============================================
 
 @use "../base/variables";
+@use "sass:color";
 
 .sidebar-window {
   background-color: variables.$ctp-base;
@@ -285,6 +286,7 @@
 .connectivity-toggle-btn {
   &:hover {
     background-color: variables.$ctp-surface2;
+    transform: translateY(-2px);
   }
 
   &.active {
@@ -292,9 +294,19 @@
     border-color: variables.$ctp-blue;
     color: variables.$ctp-base;
 
+    &:hover {
+      background-color: color.adjust(variables.$ctp-blue, $lightness: 8%);
+      transform: translateY(-2px);
+    }
+
     &.connected {
       background-color: variables.$ctp-green;
       border-color: variables.$ctp-green;
+
+      &:hover {
+        background-color: color.adjust(variables.$ctp-green, $lightness: 8%);
+        transform: translateY(-2px);
+      }
     }
   }
 }
@@ -302,11 +314,21 @@
 .connectivity-status-btn {
   opacity: 0.6;
 
+  &:hover {
+    background-color: variables.$ctp-surface2;
+    transform: translateY(-2px);
+  }
+
   &.active {
     background-color: variables.$ctp-green;
     border-color: variables.$ctp-green;
     color: variables.$ctp-base;
     opacity: 1;
+
+    &:hover {
+      background-color: color.adjust(variables.$ctp-green, $lightness: 8%);
+      transform: translateY(-2px);
+    }
   }
 }
 
@@ -349,6 +371,11 @@
     background-color: variables.$ctp-peach;
     border-color: variables.$ctp-peach;
     color: variables.$ctp-base;
+
+    &:hover {
+      background-color: color.adjust(variables.$ctp-peach, $lightness: 8%);
+      transform: translateY(-2px);
+    }
   }
 }
 
@@ -422,31 +449,31 @@
 }
 
 .slider-scale {
-  min-height: 16px;
+  min-height: 6px;
   margin-top: variables.$spacing-sm;
 
   trough {
-    min-height: 16px;
-    border-radius: 3px;
+    min-height: 6px;
+    border-radius: 15px;
     min-width: 100px;
     background-color: variables.$ctp-surface2;
     background-clip: padding-box;
     transition: all 200ms ease;
 
     &:hover {
-      background-color: variables.$ctp-surface1;
+      background-color: color.adjust(variables.$ctp-surface2, $lightness: 5%);
     }
   }
 
   highlight {
     border-radius: 3px;
-    min-height: 16px;
+    min-height: 6px;
     transition: all 200ms ease;
   }
 
   slider {
-    min-width: 16px;
-    min-height: 16px;
+    min-width: 10px;
+    min-height: 10px;
     margin: 0;
     border-radius: 50%;
     background-color: variables.$ctp-text;
@@ -479,4 +506,19 @@
   font-size: variables.$font-size-sm;
   font-weight: variables.$font-weight-normal;
   padding: variables.$spacing-lg;
+}
+
+// ============================================
+// Media Control Tooltip Styling
+// ============================================
+
+.media-control-tooltip {
+  background-color: variables.$ctp-surface0;
+  border: variables.$border-width-normal solid variables.$ctp-blue;
+  border-radius: variables.$radius-md;
+
+  .tooltip-body {
+    padding: 8px 12px;
+    color: variables.$ctp-text;
+  }
 }

@@ -73,7 +73,6 @@ export function ConnectivityToggles(): Gtk.Box {
 
   const bluetoothBtn = new Gtk.Button({
     css_classes: ["connectivity-toggle-btn"],
-    tooltip_text: "Bluetooth",
   });
   const bluetoothBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -101,7 +100,6 @@ export function ConnectivityToggles(): Gtk.Box {
   // WiFi Toggle
   const wifiBtn = new Gtk.Button({
     css_classes: ["connectivity-toggle-btn"],
-    tooltip_text: "WiFi",
   });
   const wifiBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -131,8 +129,6 @@ export function ConnectivityToggles(): Gtk.Box {
   // Ethernet (informational - typically can't toggle)
   const ethernetBtn = new Gtk.Button({
     css_classes: ["connectivity-toggle-btn", "connectivity-status-btn"],
-    tooltip_text: "Ethernet",
-    sensitive: false,
   });
   const ethernetBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -156,7 +152,6 @@ export function ConnectivityToggles(): Gtk.Box {
   // VPN Toggle
   const vpnBtn = new Gtk.Button({
     css_classes: ["connectivity-toggle-btn"],
-    tooltip_text: "VPN",
   });
   const vpnBox = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -266,11 +261,9 @@ export function ConnectivityToggles(): Gtk.Box {
     if (vpnStatus.active) {
       vpnBtn.add_css_class("active");
       vpnIcon.label = "󰖂"; // VPN connected
-      vpnBtn.tooltip_text = `VPN: ${vpnStatus.name}`;
     } else {
       vpnBtn.remove_css_class("active");
       vpnIcon.label = "󰖂"; // VPN disconnected
-      vpnBtn.tooltip_text = "VPN";
     }
 
     // VPN button is always sensitive if nmcli is available
