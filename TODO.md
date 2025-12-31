@@ -6,6 +6,7 @@
 
 - [x] **Window title pill** - Too much spacing between icon and window title text
 - [x] **Time pill hover** - Too much space between time and date when calendar label is expanded
+- [x] **Media player widget** - Takes up excessive space when no media is playing (now hidden when empty)
 
 ### Interaction Issues
 
@@ -58,20 +59,46 @@
   - Covers monitor, takes full focus
   - Most disruptive
 
-**Planned Features**:
+**Status**: ✅ Implemented as sidebar panel (Option A)
 
-- [ ] 🎵 Media player controls (play/pause, track info, scrubbing)
+**Completed Features**:
+
 - [x] 🔆 Brightness slider (auto-detects backlight devices)
 - [x] 🔊 Volume sliders (speaker + microphone)
-- [x] 🎵 Media player with artwork and controls (like swaync)
+- [x] 🎵 Media player with artwork and controls
 - [x] ⚡ System actions (reboot, shutdown, logout with compositor detection)
 - [x] 📡 Connectivity toggles (Bluetooth, WiFi, Ethernet, VPN)
 - [x] 🔋 Power profiles toggle (if supported by CPU)
-- [ ] 📡 Network switcher (WiFi networks, VPN toggle)
-- [ ] 🔔 Notification history
-- [ ] ⚡ Power menu (shutdown/restart/logout/lock)
+- [x] 🔔 Notification center with history and DND toggle
+
+**Potential Enhancements**:
+
+- [ ] 📡 Network switcher (select WiFi networks from list)
 - [ ] 🌙 Night light toggle
-- [ ] 📱 Bluetooth device management
+- [ ] 📱 Bluetooth device management (pair/unpair devices)
+
+## Architecture Improvements
+
+### Compositor Abstraction
+
+- [ ] **Make bar compositor-agnostic** - Currently hard-coded to Hyprland
+  - Center bar uses `AstalHyprland` for workspaces and window titles
+  - Need abstraction layer to support multiple compositors (Hyprland, Niri)
+  - **Proposed approach**:
+    - Create `compositors/` directory with common interface
+    - `compositors/hyprland.ts` - Uses AstalHyprland bindings
+    - `compositors/niri.ts` - Uses `niri` CLI commands (no IPC available)
+    - `compositors/fallback.ts` - Minimal/hidden features for unknown compositors
+    - Auto-detection based on environment or config
+  - **Niri limitations**:
+    - No IPC like Hyprland
+    - Scrolling workspace model doesn't map to traditional workspace list
+    - Workspaces feature would likely be hidden on Niri
+    - Window title could be obtained via `niri` command if available
+  - **Benefits**:
+    - Bar works across different Wayland compositors
+    - Graceful degradation when features aren't available
+    - Easier to add support for new compositors in future
 
 ## Future Enhancements
 
@@ -85,16 +112,17 @@
 
 ## Quality Checks
 
-- [ ] Spacing inconsistencies across pills
-- [ ] Tooltip positioning/alignment issues
-- [ ] Animation timing tweaks
-- [ ] Icon sizes consistent across widgets
+- [x] Spacing inconsistencies across pills (mostly resolved)
+- [x] Tooltip positioning/alignment issues (improved)
+- [ ] Animation timing tweaks (ongoing refinement)
+- [x] Icon sizes consistent across widgets (standardized)
 
 ---
 
 ## Notes
 
-- System control center is the biggest next feature - would serve as main system interaction hub
+- ✅ System control center implemented as sidebar panel - serves as main system interaction hub
 - Color scheme needs deliberate design thinking before implementation
 - Calendar integration requires research into CalDAV libraries/tools
 - Workspace thumbnails are cool but non-essential (tabled for now)
+- Compositor abstraction is next major architecture improvement - will enable multi-compositor support

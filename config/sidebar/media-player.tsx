@@ -407,13 +407,6 @@ export function MediaPlayer(): Gtk.Box {
   });
   container.append(playerContainer);
 
-  const noMediaLabel = new Gtk.Label({
-    label: "No media playing",
-    css_classes: ["media-no-media"],
-    valign: Gtk.Align.CENTER,
-    vexpand: true,
-  });
-
   function update(): void {
     // Clear existing
     let child = playerContainer.get_first_child();
@@ -427,7 +420,8 @@ export function MediaPlayer(): Gtk.Box {
     const players = mpris.get_players();
 
     if (players.length === 0) {
-      playerContainer.append(noMediaLabel);
+      // Hide the entire widget when no media is playing
+      container.visible = false;
     } else {
       // Show the first active player (or just the first one)
       const activePlayer =
@@ -436,6 +430,7 @@ export function MediaPlayer(): Gtk.Box {
         ) || players[0];
 
       playerContainer.append(PlayerWidget(activePlayer));
+      container.visible = true;
     }
   }
 
