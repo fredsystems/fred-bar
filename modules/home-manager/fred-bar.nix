@@ -35,6 +35,10 @@ in
         PartOf = [ "graphical-session.target" ];
       };
 
+      Path = {
+        PathChanged = "${fredbarPkg}";
+      };
+
       Service = {
         Type = "simple";
         ExecStart = "${config.home.profileDirectory}/bin/ags run";
