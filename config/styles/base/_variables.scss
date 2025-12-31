@@ -1,0 +1,91 @@
+// ============================================
+// Catppuccin Mocha Color Palette
+// ============================================
+
+// Core Colors
+$ctp-rosewater: #f5e0dc;
+$ctp-flamingo: #f2cdcd;
+$ctp-pink: #f5c2e7;
+$ctp-mauve: #cba6f7;
+$ctp-red: #f38ba8;
+$ctp-maroon: #eba0ac;
+$ctp-peach: #fab387;
+$ctp-yellow: #f9e2af;
+$ctp-green: #a6e3a1;
+$ctp-teal: #94e2d5;
+$ctp-sky: #89dceb;
+$ctp-sapphire: #74c7ec;
+$ctp-blue: #89b4fa;
+$ctp-lavender: #b4befe;
+
+// Text & Overlay Shades
+$ctp-text: #cdd6f4;
+$ctp-subtext1: #bac2de;
+$ctp-subtext0: #a6adc8;
+$ctp-overlay2: #9399b2;
+$ctp-overlay1: #7f849c;
+$ctp-overlay0: #6c7086;
+
+// Surface Shades
+$ctp-surface2: #585b70;
+$ctp-surface1: #45475a;
+$ctp-surface0: #313244;
+
+// Base Shades
+$ctp-base: #181825;
+$ctp-mantle: #181825;
+$ctp-crust: #1e1e2e;
+$ctp-espresso: #11111b;
+
+// Semantic Colors
+$ctp-error: $ctp-red;
+$ctp-warning: $ctp-yellow;
+$ctp-info: $ctp-blue;
+$ctp-success: $ctp-green;
+
+// ============================================
+// Theme Variables
+// ============================================
+
+// Typography
+$font-family: "SFProDisplay Nerd Font";
+$font-size-base: 16px;
+$font-size-sm: 13px;
+$font-size-xs: 12px;
+$font-size-lg: 18px;
+$font-weight-normal: 400;
+$font-weight-bold: 700;
+
+// Spacing
+$spacing-xs: 2px;
+$spacing-sm: 4px;
+$spacing-md: 8px;
+$spacing-lg: 12px;
+$spacing-xl: 16px;
+
+// Border Radius
+$radius-sm: 8px;
+$radius-md: 10px;
+$radius-lg: 12px;
+$radius-pill: 9999px;
+
+// Borders
+$border-width-thin: 1px;
+$border-width-normal: 2px;
+
+// Shadows
+$shadow-inset-surface: inset 0 0 0 1px $ctp-surface0;
+
+// Transitions
+$transition-fast: 0.1s;
+$transition-normal: 0.2s;
+$transition-slow: 0.3s;
+
+// Opacity
+$opacity-disabled: 0.4;
+$opacity-muted: 0.7;
+$opacity-subtle: 0.9;
+
+// Bar
+$bar-height: 28px;
+$bar-background: rgba(108, 112, 134, 0.2);

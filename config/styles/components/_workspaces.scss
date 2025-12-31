@@ -1,0 +1,90 @@
+// ============================================
+// Workspaces & Window Title
+// ============================================
+
+@use "../base/variables";
+
+// Combined Window + Workspace Pill
+.window-workspaces {
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-mauve;
+  box-shadow: variables.$shadow-inset-surface;
+  padding: variables.$spacing-xs 6px;
+
+  // When collapsed, workspaces shouldn't reserve space
+  .workspaces {
+    margin: 0;
+  }
+
+  // Smooth visual cohesion
+  .window-title {
+    border: none;
+    box-shadow: none;
+    padding: variables.$spacing-xs variables.$spacing-md;
+  }
+}
+
+// Single workspace indicator
+.ws-single {
+  padding: variables.$spacing-xs 6px;
+  background: transparent;
+  border: none;
+  color: variables.$ctp-mauve;
+}
+
+// Workspaces container
+.workspaces {
+  margin: variables.$spacing-xs;
+  padding: 1px 3px;
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-thin solid variables.$ctp-mauve;
+  box-shadow: variables.$shadow-inset-surface;
+}
+
+// Individual workspace button
+.ws {
+  padding: variables.$spacing-xs variables.$spacing-md;
+  min-height: 20px;
+  border-radius: variables.$radius-md;
+  background: transparent;
+  color: variables.$ctp-text;
+
+  &:hover {
+    background: variables.$ctp-rosewater;
+    color: variables.$ctp-base;
+  }
+
+  &.focused {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: variables.$ctp-rosewater;
+    border: variables.$border-width-normal solid variables.$ctp-rosewater;
+  }
+
+  &.active {
+    background: rgba(203, 166, 247, 0.18); // mauve tint
+    color: variables.$ctp-text;
+
+    &:hover {
+      background: variables.$ctp-rosewater;
+      color: variables.$ctp-base;
+    }
+  }
+
+  &.urgent {
+    background-color: variables.$ctp-red;
+  }
+}
+
+// Window Title
+.window-title {
+  padding: variables.$spacing-xs 10px;
+  background-color: variables.$ctp-base;
+  color: variables.$ctp-text;
+  border: variables.$border-width-normal solid variables.$ctp-mauve;
+  border-radius: variables.$radius-pill;
+  box-shadow: variables.$shadow-inset-surface;
+
+  image {
+    opacity: variables.$opacity-subtle;
+  }
+}

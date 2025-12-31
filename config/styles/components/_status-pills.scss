@@ -1,0 +1,159 @@
+// ============================================
+// System Status Pills
+// ============================================
+
+@use "../base/variables";
+
+// ============================================
+// Volume Pill
+// ============================================
+
+.volume-pill {
+  min-height: variables.$bar-height;
+  padding: variables.$spacing-xs 10px;
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
+  border-radius: variables.$radius-md;
+  box-shadow: variables.$shadow-inset-surface;
+  color: variables.$ctp-text;
+}
+
+.volume-pill-tooltip {
+  min-height: variables.$bar-height;
+  padding: variables.$spacing-xs 10px;
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
+  border-radius: variables.$radius-md;
+  box-shadow: variables.$shadow-inset-surface;
+  color: variables.$ctp-text;
+}
+
+// ============================================
+// State Pill (Generic)
+// ============================================
+
+.state-pill {
+  padding: 0 variables.$spacing-md;
+  border-radius: variables.$radius-md;
+  background: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
+  color: variables.$ctp-subtext0;
+  box-shadow: variables.$shadow-inset-surface;
+}
+
+// Idle: muted, present, calm
+.state-idle {
+  border-color: variables.$ctp-overlay1;
+  color: variables.$ctp-subtext0;
+}
+
+.state-idle-tooltip {
+  border-color: variables.$ctp-overlay1;
+  color: variables.$ctp-text;
+}
+
+// Info: something happening, not urgent
+.state-info {
+  border-color: variables.$ctp-info;
+  color: variables.$ctp-info;
+}
+
+.state-info-tooltip {
+  border-color: variables.$ctp-success;
+}
+
+// Warn: user attention recommended
+.state-warn {
+  border-color: variables.$ctp-warning;
+  color: variables.$ctp-warning;
+}
+
+.state-warn-tooltip {
+  border-color: variables.$ctp-warning;
+}
+
+// Error: something is wrong
+.state-error {
+  border-color: variables.$ctp-error;
+  color: variables.$ctp-error;
+}
+
+.state-error-tooltip {
+  border-color: variables.$ctp-error;
+}
+
+// ============================================
+// Battery Pill
+// ============================================
+
+.battery-pill {
+  border-width: variables.$border-width-normal;
+  border-style: solid;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.battery-good {
+  border-color: variables.$ctp-green;
+  color: variables.$ctp-green;
+}
+
+.battery-warn {
+  border-color: variables.$ctp-yellow;
+  color: variables.$ctp-yellow;
+}
+
+.battery-low {
+  border-color: variables.$ctp-peach;
+  color: variables.$ctp-peach;
+}
+
+.battery-critical {
+  border-color: variables.$ctp-red;
+  color: variables.$ctp-red;
+}
+
+.battery-good-tooltip {
+  border-color: variables.$ctp-green;
+}
+
+.battery-warn-tooltip {
+  border-color: variables.$ctp-yellow;
+}
+
+.battery-low-tooltip {
+  border-color: variables.$ctp-peach;
+}
+
+.battery-critical-tooltip {
+  border-color: variables.$ctp-red;
+}
+
+// ============================================
+// Network Pill
+// ============================================
+
+.network-pill {
+  border-width: variables.$border-width-normal;
+  border-style: solid;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.network-connected {
+  border-color: variables.$ctp-overlay1;
+  color: variables.$ctp-text;
+}
+
+.network-error {
+  border-color: variables.$ctp-error;
+  color: variables.$ctp-error;
+}
+
+.network-connected-tooltip {
+  border-color: variables.$ctp-overlay1;
+}
+
+.network-error-tooltip {
+  border-color: variables.$ctp-error;
+}

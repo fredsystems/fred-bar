@@ -1,0 +1,482 @@
+// ============================================
+// Sidebar Panel
+// ============================================
+
+@use "../base/variables";
+
+.sidebar-window {
+  background-color: rgba(24, 24, 37, 0.95);
+  border-left: variables.$border-width-normal solid variables.$ctp-surface0;
+}
+
+.sidebar-panel {
+  padding: 0;
+  min-width: 420px;
+}
+
+.sidebar-scroll {
+  padding: 0;
+}
+
+.sidebar-content {
+  padding: variables.$spacing-xl;
+}
+
+.sidebar-separator {
+  min-height: 1px;
+  background-color: variables.$ctp-surface0;
+}
+
+// ============================================
+// Sidebar Header
+// ============================================
+
+.sidebar-header {
+  padding: variables.$spacing-xl;
+  background-color: variables.$ctp-base;
+  border-bottom: 1px solid variables.$ctp-surface0;
+}
+
+.sidebar-title {
+  color: variables.$ctp-text;
+  font-size: variables.$font-size-lg;
+  font-weight: variables.$font-weight-bold;
+}
+
+.sidebar-count {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-sm;
+  font-weight: variables.$font-weight-normal;
+}
+
+.sidebar-dnd-button,
+.sidebar-clear-button {
+  padding: 6px variables.$spacing-lg;
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface0;
+  border: variables.$border-width-thin solid variables.$ctp-surface1;
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-normal;
+
+  &:hover {
+    background-color: variables.$ctp-surface1;
+  }
+}
+
+.sidebar-dnd-button.active {
+  background-color: variables.$ctp-blue;
+  border-color: variables.$ctp-blue;
+  color: variables.$ctp-base;
+}
+
+// ============================================
+// Section Headers
+// ============================================
+
+.section-header {
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: variables.$spacing-md;
+}
+
+// ============================================
+// Media Player Section
+// ============================================
+
+.media-section {
+  padding: variables.$spacing-lg;
+  background-color: variables.$ctp-surface0;
+  border-radius: variables.$radius-lg;
+}
+
+.media-player-container {
+  min-height: 100px;
+}
+
+.media-player {
+  padding: 0;
+}
+
+.media-top-row {
+  margin-bottom: variables.$spacing-md;
+}
+
+.media-artwork-container {
+  min-width: 80px;
+  min-height: 80px;
+}
+
+.media-artwork {
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface1;
+}
+
+.media-title {
+  color: variables.$ctp-text;
+  font-size: 15px;
+  font-weight: variables.$font-weight-bold;
+  margin-bottom: variables.$spacing-xs;
+}
+
+.media-artist {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-sm;
+  font-weight: variables.$font-weight-normal;
+}
+
+.media-album {
+  color: variables.$ctp-subtext1;
+  font-size: variables.$font-size-xs;
+  font-weight: variables.$font-weight-normal;
+  font-style: italic;
+}
+
+.media-position-box {
+  margin-bottom: variables.$spacing-md;
+}
+
+.media-position-slider {
+  min-height: 4px;
+
+  trough {
+    min-height: 4px;
+    border-radius: 2px;
+    background-color: variables.$ctp-surface1;
+  }
+
+  highlight {
+    background-color: variables.$ctp-blue;
+    border-radius: 2px;
+  }
+}
+
+.media-time-row {
+  font-size: 11px;
+  color: variables.$ctp-subtext1;
+}
+
+.media-time-current,
+.media-time-total {
+  font-weight: variables.$font-weight-normal;
+}
+
+.media-controls {
+  padding-top: variables.$spacing-sm;
+}
+
+.media-control-btn {
+  padding: 6px 10px;
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface1;
+  border: variables.$border-width-thin solid variables.$ctp-surface2;
+  color: variables.$ctp-text;
+  font-size: variables.$font-size-base;
+  min-width: 32px;
+
+  &:hover {
+    background-color: variables.$ctp-surface2;
+  }
+
+  &:disabled {
+    opacity: variables.$opacity-disabled;
+  }
+}
+
+.media-play-pause-btn {
+  font-size: variables.$font-size-lg;
+  min-width: 40px;
+}
+
+.media-shuffle-btn.active,
+.media-loop-btn.active {
+  background-color: variables.$ctp-blue;
+  border-color: variables.$ctp-blue;
+  color: variables.$ctp-base;
+}
+
+.media-no-media {
+  color: variables.$ctp-subtext0;
+  font-size: 14px;
+  font-weight: variables.$font-weight-normal;
+  padding: 20px;
+}
+
+// ============================================
+// System Actions Section
+// ============================================
+
+.system-actions-section {
+  padding: variables.$spacing-md;
+  background-color: variables.$ctp-surface0;
+  border-radius: variables.$radius-md;
+}
+
+.system-actions-row {
+  margin-top: variables.$spacing-sm;
+}
+
+.system-action-btn {
+  padding: variables.$spacing-md 6px;
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface1;
+  border: variables.$border-width-normal solid variables.$ctp-surface2;
+  color: variables.$ctp-text;
+  transition: all variables.$transition-normal;
+
+  &:hover {
+    background-color: variables.$ctp-surface2;
+    transform: translateY(-2px);
+  }
+}
+
+.system-logout-btn:hover {
+  border-color: variables.$ctp-blue;
+}
+
+.system-reboot-btn:hover {
+  border-color: variables.$ctp-yellow;
+}
+
+.system-shutdown-btn:hover {
+  border-color: variables.$ctp-red;
+}
+
+.system-action-icon {
+  font-size: variables.$font-size-lg;
+}
+
+.system-action-label {
+  font-size: 10px;
+  font-weight: variables.$font-weight-normal;
+}
+
+// ============================================
+// Connectivity Toggles Section
+// ============================================
+
+.connectivity-toggles-section {
+  padding: variables.$spacing-md;
+  background-color: variables.$ctp-surface0;
+  border-radius: variables.$radius-md;
+}
+
+.connectivity-toggle-row {
+  margin-bottom: 0;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.connectivity-toggle-btn,
+.connectivity-status-btn {
+  padding: 6px;
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface1;
+  border: variables.$border-width-normal solid variables.$ctp-surface2;
+  color: variables.$ctp-subtext0;
+  transition: all variables.$transition-normal;
+}
+
+.connectivity-toggle-btn {
+  &:hover {
+    background-color: variables.$ctp-surface2;
+  }
+
+  &.active {
+    background-color: variables.$ctp-blue;
+    border-color: variables.$ctp-blue;
+    color: variables.$ctp-base;
+
+    &.connected {
+      background-color: variables.$ctp-green;
+      border-color: variables.$ctp-green;
+    }
+  }
+}
+
+.connectivity-status-btn {
+  opacity: 0.6;
+
+  &.active {
+    background-color: variables.$ctp-green;
+    border-color: variables.$ctp-green;
+    color: variables.$ctp-base;
+    opacity: 1;
+  }
+}
+
+.connectivity-toggle-icon {
+  font-size: variables.$font-size-base;
+}
+
+.connectivity-toggle-label {
+  font-size: 9px;
+  font-weight: variables.$font-weight-normal;
+}
+
+// ============================================
+// Power Profiles Section
+// ============================================
+
+.power-profiles-section {
+  padding: variables.$spacing-md;
+  background-color: variables.$ctp-surface0;
+  border-radius: variables.$radius-md;
+}
+
+.power-profiles-row {
+  margin-top: variables.$spacing-sm;
+}
+
+.power-profile-btn {
+  padding: 6px;
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface1;
+  border: variables.$border-width-normal solid variables.$ctp-surface2;
+  color: variables.$ctp-subtext0;
+  transition: all variables.$transition-normal;
+
+  &:hover {
+    background-color: variables.$ctp-surface2;
+  }
+
+  &.active {
+    background-color: variables.$ctp-peach;
+    border-color: variables.$ctp-peach;
+    color: variables.$ctp-base;
+  }
+}
+
+.power-profile-icon {
+  font-size: variables.$font-size-base;
+}
+
+.power-profile-label {
+  font-size: 9px;
+  font-weight: variables.$font-weight-normal;
+}
+
+// ============================================
+// Sliders Section
+// ============================================
+
+.sliders-section {
+  padding: variables.$spacing-md;
+  background-color: variables.$ctp-surface0;
+  border-radius: variables.$radius-md;
+}
+
+.sliders-container {
+  margin-top: variables.$spacing-sm;
+}
+
+.slider-box {
+  padding: 6px 10px;
+  background-color: variables.$ctp-surface1;
+  border-radius: variables.$radius-sm;
+  margin-bottom: 6px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.slider-icon {
+  font-size: variables.$font-size-base;
+  color: variables.$ctp-text;
+}
+
+.slider-icon-btn {
+  padding: variables.$spacing-sm;
+  border-radius: 6px;
+  background-color: transparent;
+  border: none;
+  color: variables.$ctp-text;
+  transition: background-color variables.$transition-normal;
+
+  &:hover {
+    background-color: variables.$ctp-surface2;
+  }
+
+  &.muted {
+    color: variables.$ctp-red;
+  }
+}
+
+.slider-label {
+  color: variables.$ctp-text;
+  font-size: variables.$font-size-sm;
+  font-weight: variables.$font-weight-normal;
+}
+
+.slider-value {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-xs;
+  font-weight: variables.$font-weight-normal;
+  min-width: 48px;
+}
+
+.slider-scale {
+  min-height: 16px;
+  margin-top: variables.$spacing-sm;
+
+  trough {
+    min-height: 16px;
+    border-radius: 3px;
+    min-width: 100px;
+    background-color: variables.$ctp-surface2;
+    background-clip: padding-box;
+    transition: all 200ms ease;
+
+    &:hover {
+      background-color: variables.$ctp-surface1;
+    }
+  }
+
+  highlight {
+    border-radius: 3px;
+    min-height: 16px;
+    transition: all 200ms ease;
+  }
+
+  slider {
+    min-width: 16px;
+    min-height: 16px;
+    margin: 0;
+    border-radius: 50%;
+    background-color: variables.$ctp-text;
+    border: variables.$border-width-normal solid variables.$ctp-surface2;
+
+    &:hover {
+      background-color: variables.$ctp-lavender;
+    }
+  }
+
+  fill {
+    transition: all 200ms ease;
+  }
+}
+
+.speaker-slider highlight {
+  background-color: variables.$ctp-blue;
+}
+
+.microphone-slider highlight {
+  background-color: variables.$ctp-green;
+}
+
+.brightness-slider highlight {
+  background-color: variables.$ctp-yellow;
+}
+
+.no-sliders {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-sm;
+  font-weight: variables.$font-weight-normal;
+  padding: variables.$spacing-lg;
+}

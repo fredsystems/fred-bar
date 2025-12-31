@@ -1,0 +1,71 @@
+// ============================================
+// Workspace Preview Popover
+// ============================================
+
+@use "../base/variables";
+
+popover.workspace-preview {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.workspace-preview-box {
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-thin solid variables.$ctp-surface0;
+  border-radius: variables.$radius-sm;
+  padding: variables.$spacing-md;
+  min-width: 250px;
+}
+
+.workspace-preview-header {
+  color: variables.$ctp-mauve;
+  font-weight: variables.$font-weight-bold;
+  font-size: 14px;
+  margin-bottom: variables.$spacing-sm;
+}
+
+.workspace-preview-separator {
+  min-height: 1px;
+  background-color: variables.$ctp-surface0;
+  margin: variables.$spacing-sm 0;
+}
+
+.workspace-preview-empty {
+  color: variables.$ctp-overlay0;
+  font-style: italic;
+  padding: variables.$spacing-md;
+}
+
+.workspace-preview-window-button {
+  background-color: transparent;
+  border: none;
+  border-radius: variables.$spacing-sm;
+  padding: 0;
+  margin: variables.$spacing-xs 0;
+
+  &:hover {
+    background-color: variables.$ctp-surface0;
+  }
+}
+
+.workspace-preview-window {
+  padding: 6px variables.$spacing-md;
+}
+
+.workspace-preview-window-title {
+  color: variables.$ctp-text;
+  font-size: variables.$font-size-sm;
+}
+
+.workspace-preview-window-class {
+  color: variables.$ctp-overlay1;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.workspace-preview-window-icon {
+  margin-right: variables.$spacing-md;
+  opacity: variables.$opacity-subtle;
+}

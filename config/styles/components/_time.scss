@@ -1,0 +1,60 @@
+// ============================================
+// Time Pill & Calendar Popover
+// ============================================
+
+@use "../base/variables";
+
+.time-pill {
+  min-height: variables.$bar-height;
+  padding-left: variables.$spacing-md;
+  padding-right: variables.$spacing-md;
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
+  border-radius: variables.$radius-md;
+  box-shadow: variables.$shadow-inset-surface;
+
+  label {
+    color: variables.$ctp-text;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.expanded {
+  padding-right: variables.$spacing-md;
+}
+
+// ============================================
+// Time Popover
+// ============================================
+
+.time-popover {
+  padding: 10px variables.$spacing-lg;
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
+  border-radius: variables.$radius-lg;
+  box-shadow: variables.$shadow-inset-surface;
+}
+
+.time-popover-title {
+  color: variables.$ctp-mauve;
+  font-weight: variables.$font-weight-bold;
+}
+
+.time-popover-clocks {
+  .clock-row {
+    padding: 0;
+  }
+}
+
+// ============================================
+// World Clocks
+// ============================================
+
+.clock-city {
+  color: variables.$ctp-text;
+  opacity: variables.$opacity-subtle;
+}
+
+.clock-time {
+  color: variables.$ctp-rosewater;
+}

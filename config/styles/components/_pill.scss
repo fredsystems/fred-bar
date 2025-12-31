@@ -1,0 +1,19 @@
+// ============================================
+// Generic Pill Styles
+// ============================================
+
+@use "../base/variables";
+
+.pill {
+  margin-left: variables.$spacing-xs;
+  margin-right: variables.$spacing-xs;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: variables.$spacing-xs variables.$spacing-xs;
+  background-color: variables.$ctp-base;
+  border-radius: variables.$radius-md;
+}
+
+.clock {
+  padding: 0 variables.$spacing-md;
+}

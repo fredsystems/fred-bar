@@ -1,0 +1,337 @@
+// ============================================
+// Notification List (Sidebar)
+// ============================================
+
+@use "../base/variables";
+
+.notification-list {
+  padding: 0;
+}
+
+.notification-scroll {
+  background-color: transparent;
+}
+
+.notification-list-box {
+  padding: variables.$spacing-lg;
+}
+
+.notification-empty {
+  color: variables.$ctp-overlay0;
+  font-style: italic;
+  padding: 32px;
+}
+
+// ============================================
+// Notification Item (Sidebar)
+// ============================================
+
+.notification-item-button {
+  background-color: variables.$ctp-surface0;
+  border: variables.$border-width-thin solid variables.$ctp-blue;
+  border-radius: variables.$radius-md;
+  padding: 0;
+  margin-bottom: variables.$spacing-md;
+
+  &:hover {
+    background-color: variables.$ctp-surface1;
+    border-color: variables.$ctp-surface2;
+  }
+
+  &.urgency-low {
+    border-color: variables.$ctp-overlay1;
+  }
+
+  &.urgency-normal {
+    border-color: variables.$ctp-blue;
+  }
+
+  &.urgency-critical {
+    border-color: variables.$ctp-red;
+    background-color: rgba(243, 139, 168, 0.2);
+  }
+}
+
+.notification-item {
+  padding: variables.$spacing-lg;
+}
+
+.notification-header {
+  margin-bottom: variables.$spacing-md;
+}
+
+.notification-icon {
+  font-size: 24px;
+  color: variables.$ctp-blue;
+  min-width: 32px;
+  min-height: 24px;
+
+  // For image icons
+  image {
+    -gtk-icon-palette: error variables.$ctp-blue;
+  }
+}
+
+.notification-app {
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-bold;
+}
+
+.notification-time {
+  color: variables.$ctp-overlay1;
+  font-size: 11px;
+  font-weight: variables.$font-weight-normal;
+}
+
+.notification-close {
+  min-width: variables.$bar-height;
+  min-height: variables.$bar-height;
+  padding: 0;
+  border-radius: 6px;
+  background-color: transparent;
+  border: none;
+  color: variables.$ctp-overlay1;
+  font-size: variables.$font-size-base;
+
+  &:hover {
+    background-color: variables.$ctp-red;
+    color: variables.$ctp-base;
+  }
+}
+
+.notification-body {
+  padding-left: 40px;
+}
+
+.notification-summary {
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-bold;
+  margin-bottom: variables.$spacing-sm;
+}
+
+.notification-body-text {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-sm;
+  font-weight: variables.$font-weight-normal;
+}
+
+// ============================================
+// Popup Notifications (Top-Right)
+// ============================================
+
+.popup-notification-window {
+  background-color: transparent;
+}
+
+.popup-notification-container {
+  padding: 0;
+}
+
+.popup-notification {
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-normal solid variables.$ctp-blue;
+  border-radius: variables.$radius-md;
+  padding: 0;
+  min-width: 350px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+
+  &.urgency-low {
+    border-color: variables.$ctp-overlay1;
+  }
+
+  &.urgency-normal {
+    border-color: variables.$ctp-blue;
+  }
+
+  &.urgency-critical {
+    border-color: variables.$ctp-red;
+    background-color: variables.$ctp-base;
+
+    .popup-progress progress {
+      background-color: variables.$ctp-red;
+    }
+  }
+}
+
+.popup-header {
+  padding: variables.$spacing-lg;
+  border-bottom: variables.$border-width-thin solid variables.$ctp-surface1;
+}
+
+.popup-icon {
+  font-size: 24px;
+  color: variables.$ctp-blue;
+  min-width: 32px;
+  min-height: 24px;
+
+  // For image icons
+  image {
+    -gtk-icon-palette: error variables.$ctp-blue;
+  }
+}
+
+.popup-app {
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-bold;
+}
+
+.popup-close {
+  min-width: variables.$bar-height;
+  min-height: variables.$bar-height;
+  padding: 0;
+  border-radius: 6px;
+  background-color: transparent;
+  border: none;
+  color: variables.$ctp-overlay1;
+  font-size: variables.$font-size-base;
+
+  &:hover {
+    background-color: variables.$ctp-red;
+    color: variables.$ctp-base;
+  }
+}
+
+.popup-body {
+  padding: variables.$spacing-lg;
+}
+
+.popup-summary {
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-bold;
+  margin-bottom: variables.$spacing-sm;
+}
+
+.popup-body-text {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-sm;
+  font-weight: variables.$font-weight-normal;
+}
+
+.popup-progress {
+  min-height: 3px;
+  border-radius: variables.$spacing-sm;
+  margin-top: variables.$spacing-md;
+
+  trough {
+    background-color: variables.$ctp-surface1;
+    min-height: 3px;
+  }
+
+  progress {
+    background-color: variables.$ctp-blue;
+    min-height: 3px;
+  }
+}
+
+// ============================================
+// Notification Groups
+// ============================================
+
+.notification-group {
+  margin-bottom: variables.$spacing-sm;
+}
+
+.notification-group-header {
+  background-color: variables.$ctp-surface0;
+  border: variables.$border-width-thin solid variables.$ctp-surface1;
+  border-radius: variables.$radius-md;
+  padding: variables.$spacing-lg;
+  margin-bottom: 0;
+
+  &:hover {
+    background-color: variables.$ctp-surface1;
+    border-color: variables.$ctp-surface2;
+  }
+
+  &.expanded {
+    border-radius: variables.$radius-md variables.$radius-md 0 0;
+    border-bottom: none;
+  }
+}
+
+.notification-group-name {
+  color: variables.$ctp-text;
+  font-size: 14px;
+  font-weight: variables.$font-weight-bold;
+}
+
+.notification-group-count {
+  color: variables.$ctp-overlay1;
+  font-size: variables.$font-size-xs;
+  font-weight: variables.$font-weight-normal;
+}
+
+.notification-group-expand {
+  color: variables.$ctp-overlay1;
+  font-size: variables.$font-size-base;
+}
+
+.notification-group-dismiss {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  background-color: variables.$ctp-surface0;
+  border: variables.$border-width-thin solid variables.$ctp-surface1;
+  color: variables.$ctp-overlay1;
+  font-size: variables.$font-size-base;
+  margin-right: variables.$spacing-lg;
+
+  &:hover {
+    background-color: variables.$ctp-red;
+    color: variables.$ctp-base;
+  }
+}
+
+.notification-group-items {
+  background-color: variables.$ctp-base;
+  border: variables.$border-width-thin solid variables.$ctp-surface1;
+  border-top: none;
+  border-radius: 0 0 variables.$radius-md variables.$radius-md;
+  padding: variables.$spacing-md;
+
+  .notification-item-button {
+    margin-bottom: variables.$spacing-sm;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.notification-group-spacer {
+  min-width: 40px;
+}
+
+.notification-group-dismiss-spacer {
+  min-width: 40px;
+}
+
+// ============================================
+// Notification Badge (on bell icon)
+// ============================================
+
+.notification-badge {
+  background-color: variables.$ctp-red;
+  color: variables.$ctp-base;
+  font-size: 10px;
+  font-weight: variables.$font-weight-bold;
+  border-radius: variables.$radius-sm;
+  padding: 0 variables.$spacing-sm;
+  min-width: 16px;
+  min-height: 16px;
+  margin-top: -4px;
+  margin-right: -4px;
+}
+
+// ============================================
+// State Pill Multiple Icons
+// ============================================
+
+.state-pill-icons {
+  padding: 0;
+}

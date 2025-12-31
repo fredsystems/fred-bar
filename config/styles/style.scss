@@ -1,0 +1,19 @@
+// ============================================
+// FredBar Styles
+// Main SCSS entry point
+// ============================================
+
+// Base
+@use "base/reset";
+
+// Components - Bar Pills
+@use "components/pill";
+@use "components/workspaces";
+@use "components/tray";
+@use "components/time";
+@use "components/status-pills";
+
+// Components - Popovers & Windows
+@use "components/workspace-preview";
+@use "components/sidebar";
+@use "components/notifications";

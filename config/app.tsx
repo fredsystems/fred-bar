@@ -13,9 +13,9 @@ import { VolumePill } from "./right/speaker-volume/volume";
 import { StatePill } from "./right/system/state-pill";
 import { TimePill } from "./right/time-pill/time-pill";
 import { SidebarWindow } from "./sidebar/panel";
+import scss from "./styles/style.scss";
 
 App.reset_css();
-App.apply_css(`./style.css`);
 
 function Bar(monitorIndex: number): Gtk.Window {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
@@ -76,6 +76,7 @@ function appRemoveWindow(win: Gtk.Window): void {
 }
 
 App.start({
+  css: scss,
   main() {
     const display = Gdk.Display.get_default();
     if (!display) return [];

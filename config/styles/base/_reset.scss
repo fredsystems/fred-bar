@@ -1,0 +1,62 @@
+// ============================================
+// Global Reset & Base Styles
+// ============================================
+
+@use "variables";
+
+* {
+  font-family: variables.$font-family;
+  font-size: variables.$font-size-base;
+  min-height: 0;
+  font-weight: variables.$font-weight-bold;
+}
+
+button {
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  min-width: 0;
+}
+
+window {
+  background-color: rgba(30, 30, 46, 0.7);
+  color: variables.$ctp-overlay0;
+  transition-property: background-color;
+  transition-duration: variables.$transition-fast;
+  border-bottom: 1px solid variables.$ctp-overlay1;
+}
+
+.bar {
+  min-height: variables.$bar-height;
+  background-color: variables.$bar-background;
+}
+
+// ============================================
+// Tooltips
+// ============================================
+
+tooltip-internal {
+  background-color: variables.$ctp-base;
+  border-color: variables.$ctp-blue;
+  border-radius: variables.$radius-lg;
+  border: variables.$border-width-normal solid variables.$ctp-blue;
+  padding: 6px 10px;
+}
+
+tooltip,
+tooltip.background {
+  color: variables.$ctp-text;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.tooltip-frame {
+  background-color: variables.$ctp-base;
+  border-radius: variables.$radius-lg;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
+}
+
+.tooltip-body {
+  padding: 6px 10px;
+}

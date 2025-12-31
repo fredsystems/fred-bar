@@ -79,6 +79,14 @@
 
 ## Architecture Improvements
 
+### Styling & Organization
+
+- [✅] **SCSS refactoring** - Restructure monolithic CSS into organized SCSS modules
+  - ✅ Created modular SCSS file structure with base/ and components/ directories
+  - ✅ Defined SCSS variables for Catppuccin Mocha color palette
+  - ✅ Separated components into individual files for better organization
+  - ✅ Added theme variables for typography, spacing, borders, transitions
+
 ### Compositor Abstraction
 
 - [ ] **Make bar compositor-agnostic** - Currently hard-coded to Hyprland
