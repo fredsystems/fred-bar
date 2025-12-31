@@ -259,14 +259,17 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
     const position = player.position ?? 0;
 
     // Try to get the actual track length from the GLib.Variant metadata
-    const metadataVariant = (player as unknown as { metadata?: unknown })
-      .metadata;
+    const metadataVariant = (
+      player as unknown as {
+        metadata?: { lookup_value?: (key: string, type: null) => any };
+      }
+    ).metadata;
     let length = 0;
 
     if (metadataVariant && typeof metadataVariant.lookup_value === "function") {
       // Try to lookup the mpris:length key from the variant
       const lengthVariant = metadataVariant.lookup_value("mpris:length", null);
-      if (lengthVariant) {
+      if (lengthVariant && typeof lengthVariant.get_int64 === "function") {
         // Length is in microseconds, convert to seconds
         length = lengthVariant.get_int64() / 1000000;
       }

@@ -954,10 +954,6 @@ popover.workspace-preview {
  * Notification Badge (on bell icon)
  * ---------------------------------------- */
 
-.notification-icon-overlay {
-  /* Allow overlay positioning */
-}
-
 .notification-badge {
   background-color: var(--ctp-red);
   color: var(--ctp-base);
@@ -1379,12 +1375,6 @@ popover.workspace-preview {
   font-size: 13px;
   font-weight: normal;
   padding: 12px;
-}
-
-/* Ensure slider is interactive */
-.slider-scale,
-.slider-scale trough,
-.slider-scale slider {
 }
 
 .slider-scale trough:hover {
