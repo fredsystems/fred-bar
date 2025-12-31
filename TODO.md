@@ -43,6 +43,10 @@
 
 ### System Status Control Center
 
+- [ ] Need to improve dismissing
+  - [ ] Clicking outside of the panel should dismiss it
+  - [ ] Sometimes clicking the system status pill does not dismiss the panel
+
 **Vision**: Click on system status pill to open a comprehensive control center
 
 **UX Decision Needed**: Choose interaction model

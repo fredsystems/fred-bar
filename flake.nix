@@ -33,7 +33,6 @@
         astal.packages.${system}.wireplumber
         astal.packages.${system}.network
         astal.packages.${system}.mpris
-        # not yet used
         astal.packages.${system}.notifd
         astal.packages.${system}.bluetooth
         astal.packages.${system}.powerprofiles
