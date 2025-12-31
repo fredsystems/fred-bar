@@ -150,7 +150,14 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
   return container;
 }
 
-export function PopupNotificationContainer(): Gtk.Box {
+interface PopupNotificationContainerProps {
+  onEmpty?: () => void;
+  onHasNotifications?: () => void;
+}
+
+export function PopupNotificationContainer(
+  props?: PopupNotificationContainerProps,
+): Gtk.Box {
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 8,
@@ -158,6 +165,15 @@ export function PopupNotificationContainer(): Gtk.Box {
   });
 
   const popups = new Map<number, Gtk.Widget>();
+
+  function checkAndNotify(): void {
+    if (popups.size === 0) {
+      props?.onEmpty?.();
+    } else if (popups.size === 1) {
+      // Just got first notification
+      props?.onHasNotifications?.();
+    }
+  }
 
   function addPopup(notification: NotificationData): void {
     // Don't show duplicate popups
@@ -176,6 +192,7 @@ export function PopupNotificationContainer(): Gtk.Box {
 
     popups.set(notification.id, popup);
     container.append(popup);
+    checkAndNotify();
   }
 
   function removePopup(id: number): void {
@@ -185,6 +202,7 @@ export function PopupNotificationContainer(): Gtk.Box {
     (popup as Gtk.Widget & { _cleanup?: () => void })._cleanup?.();
     container.remove(popup);
     popups.delete(id);
+    checkAndNotify();
   }
 
   // Subscribe to new notifications

@@ -76,7 +76,15 @@ export function StatePill(): Gtk.Button {
       anyApp.get_window?.(sidebarName) ?? anyApp.getWindow?.(sidebarName);
 
     if (sidebar) {
-      sidebar.visible = !sidebar.visible;
+      const willBeVisible = !sidebar.visible;
+      sidebar.visible = willBeVisible;
+
+      // Set window size to prevent blocking mouse events when hidden
+      if (willBeVisible) {
+        sidebar.set_default_size(420, -1);
+      } else {
+        sidebar.set_default_size(0, -1);
+      }
     }
   });
 

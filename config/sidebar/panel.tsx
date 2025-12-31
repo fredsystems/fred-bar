@@ -204,7 +204,7 @@ export function SidebarWindow(monitorIndex: number): Gtk.Window {
       monitor={monitorIndex}
       anchor={TOP | RIGHT | BOTTOM}
       class="sidebar-window"
-      default_width={420}
+      default_width={0}
       exclusivity={Astal.Exclusivity.NORMAL}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
@@ -219,11 +219,21 @@ export function SidebarWindow(monitorIndex: number): Gtk.Window {
     if (keyval === 65307) {
       // ESC key
       win.visible = false;
+      win.set_default_size(0, -1);
       return true;
     }
     return false;
   });
   win.add_controller(keyController);
+
+  // Handle visibility changes to properly manage window size
+  win.connect("notify::visible", () => {
+    if (win.visible) {
+      win.set_default_size(420, -1);
+    } else {
+      win.set_default_size(0, -1);
+    }
+  });
 
   return win;
 }
