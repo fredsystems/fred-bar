@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // ============================================
 // Catppuccin Mocha Color Palette
 // ============================================
@@ -89,3 +91,16 @@ $opacity-subtle: 0.9;
 // Bar
 $bar-height: 28px;
 $bar-background: rgba(108, 112, 134, 0.2);
+
+// Slider styling
+
+$slider-trough-height: 3px;
+$slider-trough-radius: 6px;
+$slider-handle-size: 14px;
+$slider-handle-margin: -5.5px 0; // Centers handle on trough: (14px - 3px) / 2 = 5.5px
+$slider-trough-color: $ctp-surface2;
+$slider-trough-hover-color: color.adjust($ctp-surface2, $lightness: 5%);
+$slider-handle-color: $ctp-text;
+$slider-handle-hover-color: $ctp-lavender;
+$slider-handle-border-color: $ctp-surface2;
+$slider-transform-scale: 1.1;

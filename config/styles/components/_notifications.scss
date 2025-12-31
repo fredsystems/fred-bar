@@ -13,7 +13,7 @@
 }
 
 .notification-list-box {
-  padding: variables.$spacing-lg;
+  padding: 0 variables.$spacing-lg variables.$spacing-lg variables.$spacing-lg;
 }
 
 .notification-empty {

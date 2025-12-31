@@ -133,6 +133,13 @@ export function SidebarPanel(): Gtk.Box {
 
   contentBox.append(notifHeader);
 
+  // Separator before notification list
+  const notifSeparator = new Gtk.Separator({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    css_classes: ["sidebar-separator"],
+  });
+  contentBox.append(notifSeparator);
+
   // Notification list
   const notifList = NotificationList();
   contentBox.append(notifList);

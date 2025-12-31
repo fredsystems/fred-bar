@@ -5,6 +5,10 @@
 @use "../base/variables";
 @use "sass:color";
 
+// ============================================
+// Slider Variables (for consistency)
+// ============================================
+
 .sidebar-window {
   background-color: variables.$ctp-base;
   border-left: variables.$border-width-normal solid variables.$ctp-surface0;
@@ -33,9 +37,9 @@
 // ============================================
 
 .sidebar-header {
-  padding: variables.$spacing-xl;
-  background-color: variables.$ctp-base;
-  border-bottom: 1px solid variables.$ctp-surface0;
+  padding: 0;
+  background-color: transparent;
+  border-bottom: none;
 }
 
 .sidebar-title {
@@ -141,17 +145,56 @@
 }
 
 .media-position-slider {
-  min-height: 4px;
+  min-height: variables.$slider-trough-height;
+
+  outline: none;
+  box-shadow: none;
+  background-image: none;
 
   trough {
-    min-height: 4px;
-    border-radius: 2px;
-    background-color: variables.$ctp-surface1;
+    min-height: variables.$slider-trough-height;
+    border-radius: variables.$slider-trough-radius;
+    background-color: variables.$slider-trough-color;
+    transition: all 200ms ease;
+
+    &:hover {
+      background-color: variables.$slider-trough-hover-color;
+    }
   }
 
   highlight {
     background-color: variables.$ctp-blue;
-    border-radius: 2px;
+    border-radius: variables.$slider-trough-radius;
+    min-height: variables.$slider-trough-height;
+    transition: all 200ms ease;
+  }
+
+  slider {
+    min-width: variables.$slider-handle-size;
+    min-height: variables.$slider-handle-size;
+    margin: variables.$slider-handle-margin;
+    border-radius: 50%;
+    background-color: variables.$slider-handle-color;
+    border: variables.$border-width-normal solid
+      variables.$slider-handle-border-color;
+    outline: none;
+    box-shadow: none;
+    background-image: none;
+
+    &:hover {
+      background-color: variables.$slider-handle-hover-color;
+      border-color: variables.$slider-handle-hover-color;
+      outline: none;
+      box-shadow: none;
+      background-image: none;
+      transform: scale(variables.$slider-transform-scale);
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: none;
+      background-image: none;
+    }
   }
 }
 
@@ -488,38 +531,54 @@
 }
 
 .slider-scale {
-  min-height: 6px;
+  min-height: variables.$slider-trough-height;
   margin-top: variables.$spacing-sm;
+  margin-bottom: variables.$spacing-sm;
 
   trough {
-    min-height: 6px;
-    border-radius: 15px;
+    min-height: variables.$slider-trough-height;
+    border-radius: variables.$slider-trough-radius;
     min-width: 100px;
-    background-color: variables.$ctp-surface2;
+    background-color: variables.$slider-trough-color;
     background-clip: padding-box;
     transition: all 200ms ease;
 
     &:hover {
-      background-color: color.adjust(variables.$ctp-surface2, $lightness: 5%);
+      background-color: variables.$slider-trough-hover-color;
     }
   }
 
   highlight {
-    border-radius: 3px;
-    min-height: 6px;
+    border-radius: variables.$slider-trough-radius;
+    min-height: variables.$slider-trough-height;
     transition: all 200ms ease;
   }
 
   slider {
-    min-width: 10px;
-    min-height: 10px;
-    margin: 0;
+    min-width: variables.$slider-handle-size;
+    min-height: variables.$slider-handle-size;
+    margin: variables.$slider-handle-margin;
     border-radius: 50%;
-    background-color: variables.$ctp-text;
-    border: variables.$border-width-normal solid variables.$ctp-surface2;
+    background-color: variables.$slider-handle-color;
+    border: variables.$border-width-normal solid
+      variables.$slider-handle-border-color;
+    outline: none;
+    box-shadow: none;
+    background-image: none;
 
     &:hover {
-      background-color: variables.$ctp-lavender;
+      background-color: variables.$slider-handle-hover-color;
+      border-color: variables.$slider-handle-hover-color;
+      outline: none;
+      box-shadow: none;
+      background-image: none;
+      transform: scale(variables.$slider-transform-scale);
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: none;
+      background-image: none;
     }
   }
 
