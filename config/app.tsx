@@ -6,11 +6,13 @@ import App from "ags/gtk4/app";
 
 import { WindowWorkspacesPill } from "./center/window-workspaces-pill";
 import { SystemTray } from "./left/sys-tray/tray";
+import { PopupNotificationWindow } from "./notifications/popup-window";
 import { BatteryPill } from "./right/battery/battery";
 import { NetworkPill } from "./right/network/network";
 import { VolumePill } from "./right/speaker-volume/volume";
 import { StatePill } from "./right/system/state-pill";
 import { TimePill } from "./right/time-pill/time-pill";
+import { SidebarWindow } from "./sidebar/panel";
 
 App.reset_css();
 App.apply_css(`./style.css`);
@@ -80,12 +82,14 @@ App.start({
 
     const monitors = display.get_monitors(); // GListModel
     const windowsByIndex = new Map<number, Gtk.Window>();
+    const sidebarsByIndex = new Map<number, Gtk.Window>();
+    const popupsByIndex = new Map<number, Gtk.Window>();
 
     const sync = (): void => {
       const n = monitors.get_n_items();
       const wanted = new Set<number>();
 
-      // Add missing bars
+      // Add missing bars, sidebars, and popups
       for (let i = 0; i < n; i++) {
         wanted.add(i);
 
@@ -97,9 +101,21 @@ App.start({
           // but for hotplug we need to add explicitly:
           appAddWindow(win);
         }
+
+        if (!sidebarsByIndex.has(i)) {
+          const sidebar = SidebarWindow(i);
+          sidebarsByIndex.set(i, sidebar);
+          appAddWindow(sidebar);
+        }
+
+        if (!popupsByIndex.has(i)) {
+          const popup = PopupNotificationWindow(i);
+          popupsByIndex.set(i, popup);
+          appAddWindow(popup);
+        }
       }
 
-      // Remove bars for disconnected monitors
+      // Remove bars, sidebars, and popups for disconnected monitors
       for (const [idx, win] of windowsByIndex.entries()) {
         if (wanted.has(idx)) continue;
 
@@ -117,6 +133,42 @@ App.start({
 
         windowsByIndex.delete(idx);
       }
+
+      for (const [idx, sidebar] of sidebarsByIndex.entries()) {
+        if (wanted.has(idx)) continue;
+
+        try {
+          appRemoveWindow(sidebar);
+        } catch {
+          // ignore
+        }
+
+        try {
+          sidebar.destroy();
+        } catch {
+          // ignore
+        }
+
+        sidebarsByIndex.delete(idx);
+      }
+
+      for (const [idx, popup] of popupsByIndex.entries()) {
+        if (wanted.has(idx)) continue;
+
+        try {
+          appRemoveWindow(popup);
+        } catch {
+          // ignore
+        }
+
+        try {
+          popup.destroy();
+        } catch {
+          // ignore
+        }
+
+        popupsByIndex.delete(idx);
+      }
     };
 
     // Initial windows
@@ -127,6 +179,10 @@ App.start({
       sync();
     });
 
-    return Array.from(windowsByIndex.values());
+    return [
+      ...Array.from(windowsByIndex.values()),
+      ...Array.from(sidebarsByIndex.values()),
+      ...Array.from(popupsByIndex.values()),
+    ];
   },
 });

@@ -5,6 +5,7 @@ export type Severity = "idle" | "info" | "warn" | "error";
 export interface AggregatedSystemState {
   severity: Severity;
   icon: string | null;
+  icons: string[]; // Multiple icons to display side-by-side
   summary: string;
   sources: SystemSignal[];
 }
@@ -17,6 +18,8 @@ const severityRank: Record<Severity, number> = {
 };
 
 const ICON_PRIORITY: string[] = [
+  "notification", // Notifications are front and center
+
   "audio",
   "mic",
 
@@ -41,6 +44,7 @@ export function resolveSystemState(
     return {
       severity: "idle",
       icon: null,
+      icons: [],
       summary: "All systems normal",
       sources: [],
     };
@@ -50,25 +54,33 @@ export function resolveSystemState(
     (a, b) => severityRank[b.severity] - severityRank[a.severity],
   )[0];
 
-  // Determine icon independently of severity
-  let icon: string | null = null;
+  // Collect icons from all active states, ordered by priority
+  const icons: string[] = [];
+  const seenCategories = new Set<string>();
 
   for (const category of ICON_PRIORITY) {
     const match = active.find((s) => s.category === category);
-    if (match?.icon) {
-      icon = match.icon;
-      break;
+    if (match?.icon && !seenCategories.has(category)) {
+      icons.push(match.icon);
+      seenCategories.add(category);
     }
   }
 
-  // Fallback: use highest-severity icon
-  if (!icon) {
-    icon = top.icon;
+  // Add any remaining icons from active states not in priority list
+  for (const state of active) {
+    if (state.icon && !seenCategories.has(state.category)) {
+      icons.push(state.icon);
+      seenCategories.add(state.category);
+    }
   }
+
+  // Primary icon is the first one (highest priority)
+  const icon = icons.length > 0 ? icons[0] : top.icon;
 
   return {
     severity: top.severity,
     icon,
+    icons,
     summary: top.summary,
     sources: active,
   };

@@ -1,0 +1,203 @@
+import GLib from "gi://GLib";
+import Gtk from "gi://Gtk?version=4.0";
+import {
+  type NotificationData,
+  notificationService,
+} from "services/notifications";
+
+const POPUP_TIMEOUT = 10000; // 10 seconds
+
+interface PopupNotificationProps {
+  notification: NotificationData;
+  onDismiss: () => void;
+  onTimeout: () => void;
+}
+
+function PopupNotification(props: PopupNotificationProps): Gtk.Box {
+  const { notification, onDismiss, onTimeout } = props;
+
+  const container = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 0,
+    css_classes: ["popup-notification"],
+  });
+
+  // Add urgency class
+  if (notification.urgency === 2) {
+    container.add_css_class("urgent");
+  }
+
+  const header = new Gtk.Box({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    spacing: 8,
+    css_classes: ["popup-header"],
+  });
+
+  // App icon
+  const icon = new Gtk.Label({
+    label: "󰂚",
+    css_classes: ["popup-icon"],
+    xalign: 0,
+  });
+  header.append(icon);
+
+  // App name
+  const appLabel = new Gtk.Label({
+    label: notification.appName,
+    css_classes: ["popup-app"],
+    xalign: 0,
+    hexpand: true,
+    ellipsize: 3, // END
+  });
+  header.append(appLabel);
+
+  // Close button
+  const closeBtn = new Gtk.Button({
+    label: "󰅖",
+    css_classes: ["popup-close"],
+    valign: Gtk.Align.START,
+  });
+  closeBtn.connect("clicked", () => {
+    notificationService.dismissDuringPopup(notification.id);
+    onDismiss();
+  });
+  header.append(closeBtn);
+
+  container.append(header);
+
+  // Body
+  const body = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 4,
+    css_classes: ["popup-body"],
+  });
+
+  if (notification.summary) {
+    const summary = new Gtk.Label({
+      label: notification.summary,
+      css_classes: ["popup-summary"],
+      xalign: 0,
+      wrap: true,
+      max_width_chars: 35,
+    });
+    body.append(summary);
+  }
+
+  if (notification.body) {
+    const bodyLabel = new Gtk.Label({
+      label: notification.body,
+      css_classes: ["popup-body-text"],
+      xalign: 0,
+      wrap: true,
+      max_width_chars: 35,
+      lines: 3,
+      ellipsize: 3, // END
+    });
+    body.append(bodyLabel);
+  }
+
+  container.append(body);
+
+  // Progress bar for timeout
+  const progress = new Gtk.ProgressBar({
+    css_classes: ["popup-progress"],
+    fraction: 1.0,
+  });
+  container.append(progress);
+
+  // Timeout animation
+  let timeoutId: number | null = null;
+  const startTime = GLib.get_monotonic_time();
+  const updateProgress = (): boolean => {
+    const elapsed = (GLib.get_monotonic_time() - startTime) / 1000; // microseconds to milliseconds
+    const remaining = Math.max(0, POPUP_TIMEOUT - elapsed);
+    progress.fraction = remaining / POPUP_TIMEOUT;
+
+    if (remaining <= 0) {
+      onTimeout();
+      return false; // Stop the timeout
+    }
+
+    return true; // Continue
+  };
+
+  timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, updateProgress);
+
+  // Cleanup
+  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+    if (timeoutId !== null) {
+      GLib.Source.remove(timeoutId);
+      timeoutId = null;
+    }
+  };
+
+  return container;
+}
+
+export function PopupNotificationContainer(): Gtk.Box {
+  const container = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 8,
+    css_classes: ["popup-notification-container"],
+  });
+
+  const popups = new Map<number, Gtk.Widget>();
+
+  function addPopup(notification: NotificationData): void {
+    // Don't show duplicate popups
+    if (popups.has(notification.id)) return;
+
+    const popup = PopupNotification({
+      notification,
+      onDismiss: () => {
+        removePopup(notification.id);
+      },
+      onTimeout: () => {
+        // Timeout means it should go to history
+        removePopup(notification.id);
+      },
+    });
+
+    popups.set(notification.id, popup);
+    container.append(popup);
+  }
+
+  function removePopup(id: number): void {
+    const popup = popups.get(id);
+    if (!popup) return;
+
+    (popup as Gtk.Widget & { _cleanup?: () => void })._cleanup?.();
+    container.remove(popup);
+    popups.delete(id);
+  }
+
+  // Subscribe to new notifications
+  const unsubscribe = notificationService.subscribeToPopups((notification) => {
+    addPopup(notification);
+  });
+
+  // Also listen for dismissals
+  const unsubscribeMain = notificationService.subscribe(() => {
+    // Remove any popups that were dismissed externally
+    for (const [id, _popup] of popups) {
+      const exists = notificationService
+        .getNotifications()
+        .some((n) => n.id === id);
+      if (!exists) {
+        removePopup(id);
+      }
+    }
+  });
+
+  // Cleanup
+  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+    // Clean up all popups
+    for (const [id, _popup] of popups) {
+      removePopup(id);
+    }
+    unsubscribe();
+    unsubscribeMain();
+  };
+
+  return container;
+}

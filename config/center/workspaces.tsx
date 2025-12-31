@@ -1,7 +1,5 @@
 import Hyprland from "gi://AstalHyprland";
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
-import Pango from "gi://Pango?version=1.0";
 
 import { resolveAppIcon } from "helpers/icon-resolver";
 
