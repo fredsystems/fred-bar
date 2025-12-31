@@ -45,15 +45,20 @@
 
 - [x] Hover affects on the buttons is off.
   - [x] If the button has a colored background, there is no hover effect.
-  - [x] Logout/Reboot/Shutdown have a different (and better) hover effect than BT/Wifi/Ethernet/etc
   - [x] All buttons now have consistent hover effects with translateY(-2px) lift
+  - [x] Fixed Ethernet button hover (was disabled due to sensitive: false)
+  - [x] Fixed slider trough hover to lighten instead of darken
 - [x] Tool tips
   - [x] Remove tool tip from buttons with text (Logout/Reboot/Shutdown, BT/WiFi/VPN/Ethernet, Power Profiles)
-  - [x] Media player control buttons retain tooltips (they have no text labels)
-  - [x] Tooltips now styled with surface0 background and blue rounded border matching sidebar widgets
+  - [x] Media player control buttons use custom tooltip helper with proper styling
+  - [x] Media tooltips styled with surface0 background and blue rounded border
+- [x] Sliders refined
+  - [x] Made sliders narrower (6px height) with pill-shaped ends
+  - [x] Fixed hover behavior on trough
 - [ ] Need to improve dismissing
-  - [ ] Clicking outside of the panel should dismiss it (without blocking events inside the panel)
-  - [ ] Sometimes clicking the system status pill does not dismiss the panel
+  - [x] ESC key dismisses the panel
+  - [ ] Clicking outside of the panel should dismiss it (complex - layer-shell limitations)
+  - [ ] Clicking the system status pill to toggle needs refinement (works with mouse movement)
 
 **Vision**: Click on system status pill to open a comprehensive control center
 

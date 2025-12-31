@@ -177,9 +177,27 @@
   color: variables.$ctp-text;
   font-size: variables.$font-size-base;
   min-width: 32px;
+  transition: all variables.$transition-normal;
 
-  &:hover {
+  // Override GTK default button styling
+  outline: none;
+  box-shadow: none;
+
+  &:not(:disabled) {
+    border-color: variables.$ctp-mauve;
+  }
+
+  &:hover:not(:disabled) {
     background-color: variables.$ctp-surface2;
+    border-color: variables.$ctp-mauve;
+    outline: none;
+    box-shadow: none;
+    transform: translateY(-2px);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
   }
 
   &:disabled {
@@ -197,6 +215,19 @@
   background-color: variables.$ctp-blue;
   border-color: variables.$ctp-blue;
   color: variables.$ctp-base;
+
+  &:hover:not(:disabled) {
+    background-color: color.adjust(variables.$ctp-blue, $lightness: 8%);
+    border-color: color.adjust(variables.$ctp-blue, $lightness: 8%);
+    outline: none;
+    box-shadow: none;
+    transform: translateY(-2px);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
+  }
 }
 
 .media-no-media {
@@ -236,14 +267,17 @@
 
 .system-logout-btn:hover {
   border-color: variables.$ctp-blue;
+  color: variables.$ctp-blue;
 }
 
 .system-reboot-btn:hover {
   border-color: variables.$ctp-yellow;
+  color: variables.$ctp-yellow;
 }
 
 .system-shutdown-btn:hover {
   border-color: variables.$ctp-red;
+  color: variables.$ctp-red;
 }
 
 .system-action-icon {
@@ -281,11 +315,15 @@
   border: variables.$border-width-normal solid variables.$ctp-surface2;
   color: variables.$ctp-subtext0;
   transition: all variables.$transition-normal;
+
+  &:hover {
+    color: variables.$ctp-base;
+  }
 }
 
 .connectivity-toggle-btn {
   &:hover {
-    background-color: variables.$ctp-surface2;
+    background-color: color.adjust(variables.$ctp-surface2, $lightness: 8%);
     transform: translateY(-2px);
   }
 
@@ -364,7 +402,8 @@
   transition: all variables.$transition-normal;
 
   &:hover {
-    background-color: variables.$ctp-surface2;
+    background-color: color.adjust(variables.$ctp-surface2, $lightness: 8%);
+    transform: translateY(-2px);
   }
 
   &.active {
