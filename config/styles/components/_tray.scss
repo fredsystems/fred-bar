@@ -5,7 +5,7 @@
 @use "../base/variables";
 
 .tray {
-  border: variables.$border-width-normal solid variables.$ctp-maroon;
+  border: variables.$border-width-normal solid variables.$ctp-overlay1;
   box-shadow: variables.$shadow-inset-surface;
 }
 

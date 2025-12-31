@@ -365,7 +365,6 @@ export function NotificationList(): Gtk.Box {
         label: "No notifications",
         css_classes: ["notification-empty"],
         valign: Gtk.Align.CENTER,
-        vexpand: true,
       });
       listBox.append(empty);
     } else {

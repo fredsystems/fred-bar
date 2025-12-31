@@ -5,7 +5,7 @@
 @use "../base/variables";
 
 .sidebar-window {
-  background-color: rgba(24, 24, 37, 0.95);
+  background-color: variables.$ctp-base;
   border-left: variables.$border-width-normal solid variables.$ctp-surface0;
 }
 
