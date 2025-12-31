@@ -659,7 +659,7 @@ popover.workspace-preview {
 
 .notification-item-button {
   background-color: var(--ctp-surface0);
-  border: 1px solid var(--ctp-surface1);
+  border: 1px solid var(--ctp-blue);
   border-radius: 10px;
   padding: 0;
   margin-bottom: 8px;
@@ -670,9 +670,17 @@ popover.workspace-preview {
   border-color: var(--ctp-surface2);
 }
 
-.notification-item-button.urgent {
+.notification-item-button.urgency-low {
+  border-color: var(--ctp-overlay1);
+}
+
+.notification-item-button.urgency-normal {
+  border-color: var(--ctp-blue);
+}
+
+.notification-item-button.urgency-critical {
   border-color: var(--ctp-red);
-  background-color: rgba(243, 139, 168, 0.1);
+  background-color: rgba(243, 139, 168, 0.2);
 }
 
 .notification-item {
@@ -747,17 +755,25 @@ popover.workspace-preview {
 }
 
 .popup-notification {
-  background-color: var(--ctp-surface0);
-  border: 2px solid var(--ctp-surface1);
+  background-color: var(--ctp-base);
+  border: 2px solid var(--ctp-blue);
   border-radius: 10px;
   padding: 0;
   min-width: 350px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.popup-notification.urgent {
+.popup-notification.urgency-low {
+  border-color: var(--ctp-overlay1);
+}
+
+.popup-notification.urgency-normal {
+  border-color: var(--ctp-blue);
+}
+
+.popup-notification.urgency-critical {
   border-color: var(--ctp-red);
-  background-color: rgba(243, 139, 168, 0.15);
+  background-color: var(--ctp-base);
 }
 
 .popup-header {
@@ -812,7 +828,8 @@ popover.workspace-preview {
 
 .popup-progress {
   min-height: 3px;
-  border-radius: 0 0 8px 8px;
+  border-radius: 4px;
+  margin-top: 8px;
 }
 
 .popup-progress trough {
@@ -825,7 +842,7 @@ popover.workspace-preview {
   min-height: 3px;
 }
 
-.popup-notification.urgent .popup-progress progress {
+.popup-notification.urgency-critical .popup-progress progress {
   background-color: var(--ctp-red);
 }
 
@@ -835,6 +852,10 @@ popover.workspace-preview {
 
 .notification-group {
   margin-bottom: 4px;
+}
+
+.notification-group-header-overlay {
+  /* Allow overlay positioning */
 }
 
 .notification-group-header {
@@ -873,14 +894,15 @@ popover.workspace-preview {
 }
 
 .notification-group-dismiss {
-  min-width: 28px;
-  min-height: 28px;
+  min-width: 32px;
+  min-height: 32px;
   padding: 0;
   border-radius: 6px;
-  background-color: transparent;
-  border: none;
+  background-color: var(--ctp-surface0);
+  border: 1px solid var(--ctp-surface1);
   color: var(--ctp-overlay1);
   font-size: 16px;
+  margin-right: 12px;
 }
 
 .notification-group-dismiss:hover {
@@ -908,10 +930,35 @@ popover.workspace-preview {
   min-width: 40px;
 }
 
+.notification-group-dismiss-spacer {
+  min-width: 40px;
+}
+
 /* ----------------------------------------
  * State Pill Multiple Icons
  * ---------------------------------------- */
 
 .state-pill-icons {
   padding: 0;
+}
+
+/* ----------------------------------------
+ * Notification Badge (on bell icon)
+ * ---------------------------------------- */
+
+.notification-icon-overlay {
+  /* Allow overlay positioning */
+}
+
+.notification-badge {
+  background-color: var(--ctp-red);
+  color: var(--ctp-base);
+  font-size: 10px;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 0px 4px;
+  min-width: 16px;
+  min-height: 16px;
+  margin-top: -4px;
+  margin-right: -4px;
 }

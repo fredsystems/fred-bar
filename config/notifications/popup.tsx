@@ -22,9 +22,13 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     css_classes: ["popup-notification"],
   });
 
-  // Add urgency class
+  // Add urgency class (0 = low, 1 = normal, 2 = critical)
   if (notification.urgency === 2) {
-    container.add_css_class("urgent");
+    container.add_css_class("urgency-critical");
+  } else if (notification.urgency === 1) {
+    container.add_css_class("urgency-normal");
+  } else {
+    container.add_css_class("urgency-low");
   }
 
   const header = new Gtk.Box({
@@ -96,14 +100,14 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     body.append(bodyLabel);
   }
 
-  container.append(body);
-
-  // Progress bar for timeout
+  // Progress bar for timeout (inside body)
   const progress = new Gtk.ProgressBar({
     css_classes: ["popup-progress"],
     fraction: 1.0,
   });
-  container.append(progress);
+  body.append(progress);
+
+  container.append(body);
 
   // Timeout animation
   let timeoutId: number | null = null;

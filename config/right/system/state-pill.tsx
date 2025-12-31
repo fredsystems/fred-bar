@@ -2,6 +2,7 @@ import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 import App from "ags/gtk4/app";
 import { attachTooltip } from "helpers/tooltip";
+import { notificationService } from "services/notifications";
 import type { AggregatedSystemState } from "./state/helpers/aggregate";
 import type { SystemSignal } from "./state/helpers/normalize";
 import { systemState } from "./state/modules/system";
@@ -11,7 +12,7 @@ const IDLE_ICON = "󰒓";
 
 /* Semantic → color mapping (mirrors Catppuccin vars) */
 const SEVERITY_COLOR: Record<string, string> = {
-  idle: "#a6e3a1", // muted
+  idle: "#a6adc8", // subtext0 - muted
   info: "#89b4fa", // blue
   warn: "#f9e2af", // yellow
   error: "#f38ba8", // red
@@ -36,6 +37,9 @@ export function StatePill(): Gtk.Button {
     css_classes: ["state-pill-icons"],
   });
   button.set_child(iconBox);
+
+  // Track notification count for badge
+  let notificationCount = 0;
 
   // Click handler to toggle sidebar
   button.connect("clicked", () => {
@@ -97,17 +101,64 @@ export function StatePill(): Gtk.Button {
       child = next;
     }
 
+    // Update notification count from service
+    notificationCount = notificationService.getPendingCount();
+
     // Add icons (multiple if available)
     if (isIdle) {
       const idleIcon = new Gtk.Label({ label: IDLE_ICON });
       iconBox.append(idleIcon);
     } else if (state.icons.length > 0) {
-      for (const icon of state.icons) {
-        const iconLabel = new Gtk.Label({ label: icon });
-        iconBox.append(iconLabel);
+      // Create a map of icons to their source severity
+      const iconSeverityMap = new Map<string, string>();
+      for (const source of state.sources) {
+        if (source.icon) {
+          iconSeverityMap.set(source.icon, source.severity);
+        }
+      }
+
+      for (let i = 0; i < state.icons.length; i++) {
+        const icon = state.icons[i];
+
+        // For notification icon, use overlay with badge
+        if (icon === "󰂚" && notificationCount > 0) {
+          const overlay = new Gtk.Overlay({
+            css_classes: ["notification-icon-overlay"],
+          });
+
+          const bellLabel = new Gtk.Label({ label: icon });
+          const severity = iconSeverityMap.get(icon) || "idle";
+          const color = SEVERITY_COLOR[severity];
+          bellLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
+
+          overlay.set_child(bellLabel);
+
+          // Badge
+          const badge = new Gtk.Label({
+            label:
+              notificationCount > 99 ? "99+" : notificationCount.toString(),
+            css_classes: ["notification-badge"],
+            halign: Gtk.Align.END,
+            valign: Gtk.Align.START,
+          });
+          overlay.add_overlay(badge);
+
+          iconBox.append(overlay);
+        } else {
+          const iconLabel = new Gtk.Label({ label: icon });
+
+          // Color the icon based on its severity
+          const severity = iconSeverityMap.get(icon) || "idle";
+          const color = SEVERITY_COLOR[severity];
+          iconLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
+
+          iconBox.append(iconLabel);
+        }
       }
     } else if (state.icon) {
       const iconLabel = new Gtk.Label({ label: state.icon });
+      const color = SEVERITY_COLOR[state.severity];
+      iconLabel.set_markup(`<span foreground="${color}">${state.icon}</span>`);
       iconBox.append(iconLabel);
     }
   }

@@ -142,9 +142,13 @@ function NotificationItem(
     notificationService.invoke(notif.id);
   });
 
-  // Add urgency class
+  // Add urgency class (0 = low, 1 = normal, 2 = critical)
   if (notif.urgency === 2) {
-    button.add_css_class("urgent");
+    button.add_css_class("urgency-critical");
+  } else if (notif.urgency === 1) {
+    button.add_css_class("urgency-normal");
+  } else {
+    button.add_css_class("urgency-low");
   }
 
   return button as unknown as Gtk.Box;
@@ -166,7 +170,12 @@ function NotificationGroup(props: NotificationGroupProps): Gtk.Box {
 
   let expanded = false;
 
-  // Group header
+  // Use overlay to position dismiss button separately
+  const headerOverlay = new Gtk.Overlay({
+    css_classes: ["notification-group-header-overlay"],
+  });
+
+  // Group header button (without dismiss button inside)
   const headerButton = new Gtk.Button({
     css_classes: ["notification-group-header"],
   });
@@ -213,19 +222,35 @@ function NotificationGroup(props: NotificationGroupProps): Gtk.Box {
   });
   headerBox.append(expandIcon);
 
-  // Dismiss all button for this group
+  // Add some padding to the right to make room for dismiss button
+  const spacer = new Gtk.Box({
+    css_classes: ["notification-group-dismiss-spacer"],
+  });
+  headerBox.append(spacer);
+
+  headerButton.set_child(headerBox);
+  headerOverlay.set_child(headerButton);
+
+  // Dismiss all button - as an overlay (positioned independently)
   const dismissAllBtn = new Gtk.Button({
     label: "󰆴", // trash icon
     css_classes: ["notification-group-dismiss"],
     tooltip_text: "Dismiss all from this app",
+    halign: Gtk.Align.END,
+    valign: Gtk.Align.CENTER,
   });
+
   dismissAllBtn.connect("clicked", () => {
     notificationService.dismissApp(appName);
   });
-  headerBox.append(dismissAllBtn);
 
-  headerButton.set_child(headerBox);
-  container.append(headerButton);
+  headerOverlay.add_overlay(dismissAllBtn);
+  container.append(headerOverlay);
+
+  // Now header button click only toggles
+  headerButton.connect("clicked", () => {
+    toggleExpanded();
+  });
 
   // Revealer for notifications
   const revealer = new Gtk.Revealer({
@@ -272,8 +297,6 @@ function NotificationGroup(props: NotificationGroupProps): Gtk.Box {
       headerButton.remove_css_class("expanded");
     }
   }
-
-  headerButton.connect("clicked", toggleExpanded);
 
   return container;
 }
