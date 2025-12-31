@@ -259,7 +259,8 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
     const position = player.position ?? 0;
 
     // Try to get the actual track length from the GLib.Variant metadata
-    const metadataVariant = (player as unknown as { metadata?: any }).metadata;
+    const metadataVariant = (player as unknown as { metadata?: unknown })
+      .metadata;
     let length = 0;
 
     if (metadataVariant && typeof metadataVariant.lookup_value === "function") {
