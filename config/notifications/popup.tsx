@@ -1,5 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { resolveAppIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
   notificationService,
@@ -37,13 +38,24 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     css_classes: ["popup-header"],
   });
 
-  // App icon
-  const icon = new Gtk.Label({
-    label: "󰂚",
-    css_classes: ["popup-icon"],
-    xalign: 0,
-  });
-  header.append(icon);
+  // App icon - try to resolve from app, fallback to bell
+  const appGicon = resolveAppIcon(notification.appIcon || notification.appName);
+  let iconWidget: Gtk.Widget;
+
+  if (appGicon) {
+    const iconImage = Gtk.Image.new_from_gicon(appGicon);
+    iconImage.set_pixel_size(24);
+    iconImage.set_css_classes(["popup-icon"]);
+    iconWidget = iconImage;
+  } else {
+    // Fallback to bell icon
+    const iconLabel = new Gtk.Label({
+      label: "󰂚",
+      css_classes: ["popup-icon"],
+    });
+    iconWidget = iconLabel;
+  }
+  header.append(iconWidget);
 
   // App name
   const appLabel = new Gtk.Label({

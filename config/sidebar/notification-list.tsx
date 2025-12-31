@@ -1,5 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { resolveAppIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
   notificationService,
@@ -46,12 +47,23 @@ function NotificationItem(
 
   // App icon (only show if not grouped, to avoid repetition)
   if (!isGrouped) {
-    const icon = new Gtk.Label({
-      label: "󰂚",
-      css_classes: ["notification-icon"],
-      xalign: 0,
-    });
-    header.append(icon);
+    const appGicon = resolveAppIcon(notif.appIcon || notif.appName);
+    let iconWidget: Gtk.Widget;
+
+    if (appGicon) {
+      const iconImage = Gtk.Image.new_from_gicon(appGicon);
+      iconImage.set_pixel_size(24);
+      iconImage.set_css_classes(["notification-icon"]);
+      iconWidget = iconImage;
+    } else {
+      // Fallback to bell icon
+      const iconLabel = new Gtk.Label({
+        label: "󰂚",
+        css_classes: ["notification-icon"],
+      });
+      iconWidget = iconLabel;
+    }
+    header.append(iconWidget);
   } else {
     // Add left padding for grouped items
     const spacer = new Gtk.Box({
@@ -185,12 +197,25 @@ function NotificationGroup(props: NotificationGroupProps): Gtk.Box {
     spacing: 8,
   });
 
-  // Icon
-  const icon = new Gtk.Label({
-    label: "󰂚",
-    css_classes: ["notification-icon"],
-  });
-  headerBox.append(icon);
+  // Icon - use app icon for the group
+  const firstNotif = notifications[0];
+  const appGicon = resolveAppIcon(firstNotif.appIcon || appName);
+  let iconWidget: Gtk.Widget;
+
+  if (appGicon) {
+    const iconImage = Gtk.Image.new_from_gicon(appGicon);
+    iconImage.set_pixel_size(24);
+    iconImage.set_css_classes(["notification-icon"]);
+    iconWidget = iconImage;
+  } else {
+    // Fallback to bell icon
+    const iconLabel = new Gtk.Label({
+      label: "󰂚",
+      css_classes: ["notification-icon"],
+    });
+    iconWidget = iconLabel;
+  }
+  headerBox.append(iconWidget);
 
   // App name and count
   const textBox = new Gtk.Box({

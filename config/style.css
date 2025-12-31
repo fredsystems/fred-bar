@@ -695,6 +695,12 @@ popover.workspace-preview {
   font-size: 24px;
   color: var(--ctp-blue);
   min-width: 32px;
+  min-height: 24px;
+}
+
+/* For image icons */
+.notification-icon image {
+  -gtk-icon-palette: error var(--ctp-blue);
 }
 
 .notification-app {
@@ -785,6 +791,12 @@ popover.workspace-preview {
   font-size: 24px;
   color: var(--ctp-blue);
   min-width: 32px;
+  min-height: 24px;
+}
+
+/* For image icons */
+.popup-icon image {
+  -gtk-icon-palette: error var(--ctp-blue);
 }
 
 .popup-app {
@@ -852,10 +864,6 @@ popover.workspace-preview {
 
 .notification-group {
   margin-bottom: 4px;
-}
-
-.notification-group-header-overlay {
-  /* Allow overlay positioning */
 }
 
 .notification-group-header {
