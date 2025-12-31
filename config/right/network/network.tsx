@@ -95,7 +95,6 @@ function getNetworkInfo(
   vpnStatus: { active: boolean; name: string },
 ): {
   icon: string;
-  label: string;
   connected: boolean;
   vpnActive: boolean;
 } {
@@ -106,7 +105,6 @@ function getNetworkInfo(
   if (vpnStatus.active) {
     return {
       icon: vpnIcon(),
-      label: vpnStatus.name,
       connected: true,
       vpnActive: true,
     };
@@ -118,7 +116,6 @@ function getNetworkInfo(
     const strength = wifi.strength;
     return {
       icon: wifiIcon(strength),
-      label: ssid,
       connected: true,
       vpnActive: false,
     };
@@ -128,7 +125,6 @@ function getNetworkInfo(
   if (wired && wired.internet === Network.Internet.CONNECTED) {
     return {
       icon: ethernetIcon(),
-      label: "Ethernet",
       connected: true,
       vpnActive: false,
     };
@@ -137,7 +133,6 @@ function getNetworkInfo(
   // No active connection
   return {
     icon: disconnectedIcon(),
-    label: "No Connection",
     connected: false,
     vpnActive: false,
   };
@@ -175,10 +170,8 @@ export function NetworkPill(): Gtk.Box {
   });
 
   const icon = new Gtk.Label({ label: "" });
-  const label = new Gtk.Label({ label: "" });
 
   box.append(icon);
-  box.append(label);
 
   /**
    * Updates widget display based on current network state
@@ -190,7 +183,6 @@ export function NetworkPill(): Gtk.Box {
     const info = getNetworkInfo(network, vpnStatus);
 
     icon.label = info.icon;
-    label.label = info.label;
 
     // Clear previous state classes
     box.remove_css_class("network-connected");
