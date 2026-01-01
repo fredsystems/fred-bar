@@ -39,6 +39,19 @@ Uses `AstalHyprland` bindings for native IPC integration with Hyprland.
 - ✅ Native workspace switching
 - ✅ Window focusing
 
+##### `niri.ts` - Niri Adapter
+
+Uses `niri msg` CLI commands and event stream for compositor communication.
+
+**Features:**
+
+- ✅ Full workspace support
+- ✅ Window tracking and management
+- ✅ Real-time event notifications via `niri msg event-stream`
+- ✅ Workspace switching via `niri msg action`
+- ✅ Window focusing
+- ℹ️ Multi-monitor aware (shows workspaces from focused output)
+
 ##### `fallback.ts` - Fallback Adapter
 
 Used when the compositor is unknown or unsupported.
@@ -165,6 +178,15 @@ disconnect();
 - Native workspace IDs and names
 - Window address-based focusing
 
+### Niri
+
+- Uses `niri msg` CLI commands
+- Real-time events via `niri msg event-stream`
+- Workspace support (shows workspaces from focused output)
+- Window tracking and focusing
+- Event stream parsed as JSON
+- Multi-monitor aware
+
 ### Future Compositors
 
 **Sway:**
@@ -172,13 +194,6 @@ disconnect();
 - Can use `swaymsg` for IPC
 - Similar workspace model to Hyprland
 - Should be straightforward to implement
-
-**Niri:**
-
-- No stable IPC (as of writing)
-- May need to use CLI commands (`niri msg`)
-- Scrolling workspace model differs from traditional numbered workspaces
-- Limited to window title only, workspace previews likely not feasible
 
 **River:**
 
@@ -230,6 +245,33 @@ export function MyWidget(): Gtk.Box {
   });
 }
 ```
+
+## Niri-Specific Implementation Notes
+
+### Event Stream
+
+Niri provides real-time events via `niri msg event-stream`:
+
+- Events are JSON objects, one per line
+- Spawned as a background process using `GLib.spawn_async_with_pipes`
+- Read via `GLib.IOChannel` and `GLib.io_add_watch`
+- Events parsed and mapped to compositor callbacks
+
+### Workspace Handling
+
+- Niri has per-output workspaces
+- Adapter shows workspaces from the currently focused output
+- Active workspace determined by `*` marker in `niri msg workspaces`
+
+### Commands Used
+
+- `niri msg workspaces` - Get workspace list per output
+- `niri msg focused-output` - Get currently focused output
+- `niri msg windows` - Get all windows
+- `niri msg focused-window` - Get focused window
+- `niri msg action focus-workspace <id>` - Switch workspace
+- `niri msg action focus-window --id <id>` - Focus window
+- `niri msg event-stream` - Real-time event notifications
 
 ## Benefits
 

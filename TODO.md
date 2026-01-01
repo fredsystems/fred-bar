@@ -109,19 +109,20 @@
 - [x] **Make bar compositor-agnostic** - ✅ COMPLETED
   - ✅ Created `compositors/` directory with common interface (`CompositorAdapter`)
   - ✅ `compositors/hyprland.ts` - Uses AstalHyprland bindings
+  - ✅ `compositors/niri.ts` - Uses `niri msg` CLI commands with event stream
   - ✅ `compositors/fallback.ts` - Minimal/hidden features for unknown compositors
   - ✅ Auto-detection based on environment variables
   - ✅ All center widgets refactored to use compositor abstraction
   - ✅ Widgets gracefully hide when compositor doesn't support features
   - **Next steps**:
     - [ ] Add Sway support (`compositors/sway.ts`)
-    - [ ] Add Niri support (`compositors/niri.ts`) - CLI-based, limited features
     - [ ] Add River support if desired
   - **Implementation details**:
     - `types.ts` - Generic workspace/window interfaces
     - `index.ts` - Factory with auto-detection
     - Capability flags: `supportsWorkspaces`, `supportsWindows`
     - Event system with disconnect callbacks
+    - Real-time event stream for Niri
     - See `config/compositors/README.md` for full documentation
 
 ## Future Enhancements

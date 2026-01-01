@@ -22,7 +22,8 @@ export class HyprlandAdapter implements CompositorAdapter {
     this.hypr = Hyprland.get_default();
   }
 
-  getWorkspaces(): CompositorWorkspace[] {
+  getWorkspaces(monitor?: string): CompositorWorkspace[] {
+    // Hyprland doesn't have per-monitor workspaces, ignore monitor parameter
     return (this.hypr.workspaces ?? [])
       .filter((ws) => ws.id > 0)
       .sort((a, b) => a.id - b.id)
@@ -32,7 +33,8 @@ export class HyprlandAdapter implements CompositorAdapter {
       }));
   }
 
-  getFocusedWorkspace(): CompositorWorkspace | null {
+  getFocusedWorkspace(monitor?: string): CompositorWorkspace | null {
+    // Hyprland doesn't have per-monitor workspaces, ignore monitor parameter
     const ws = this.hypr.focused_workspace;
     if (!ws) return null;
 
@@ -63,6 +65,11 @@ export class HyprlandAdapter implements CompositorAdapter {
       workspaceId: client.workspace.id,
       hidden: client.hidden,
     };
+  }
+
+  getFocusedWindowForMonitor(monitor: string): CompositorWindow | null {
+    // Hyprland doesn't have per-monitor focus, return global focused window
+    return this.getFocusedWindow();
   }
 
   getWorkspaceWindows(workspaceId: number): CompositorWindow[] {

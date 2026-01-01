@@ -28,7 +28,7 @@ function Bar(monitorIndex: number): Gtk.Window {
       anchor={TOP | LEFT | RIGHT}
       class="bar"
       default_height={28}
-      // These two are the “reserve space” sauce:
+      // These two are the "reserve space" sauce:
       // (you already found the right combo for single monitor)
       exclusivity={Astal.Exclusivity.EXCLUSIVE}
       layer={Astal.Layer.TOP}

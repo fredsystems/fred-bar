@@ -56,13 +56,15 @@ export interface CompositorAdapter {
 
   /**
    * Get all available workspaces
+   * @param monitor Optional monitor name (e.g., "DP-2") to filter workspaces
    */
-  getWorkspaces(): CompositorWorkspace[];
+  getWorkspaces(monitor?: string): CompositorWorkspace[];
 
   /**
    * Get the currently focused workspace
+   * @param monitor Optional monitor name (e.g., "DP-2") to get focused workspace for that monitor
    */
-  getFocusedWorkspace(): CompositorWorkspace | null;
+  getFocusedWorkspace(monitor?: string): CompositorWorkspace | null;
 
   /**
    * Get all windows/clients
@@ -73,6 +75,12 @@ export interface CompositorAdapter {
    * Get the currently focused window
    */
   getFocusedWindow(): CompositorWindow | null;
+
+  /**
+   * Get the focused window for a specific monitor's active workspace
+   * @param monitor Monitor name (e.g., "DP-2")
+   */
+  getFocusedWindowForMonitor(monitor: string): CompositorWindow | null;
 
   /**
    * Get windows for a specific workspace
