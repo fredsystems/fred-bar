@@ -1,0 +1,138 @@
+import Hyprland from "gi://AstalHyprland";
+import type {
+  CompositorAdapter,
+  CompositorEventHandlers,
+  CompositorWindow,
+  CompositorWorkspace,
+} from "./types";
+
+/**
+ * Hyprland compositor adapter
+ *
+ * Uses AstalHyprland bindings for native IPC integration
+ */
+export class HyprlandAdapter implements CompositorAdapter {
+  readonly name = "hyprland";
+  readonly supportsWorkspaces = true;
+  readonly supportsWindows = true;
+
+  private hypr: Hyprland.Hyprland;
+
+  constructor() {
+    this.hypr = Hyprland.get_default();
+  }
+
+  getWorkspaces(): CompositorWorkspace[] {
+    return (this.hypr.workspaces ?? [])
+      .filter((ws) => ws.id > 0)
+      .sort((a, b) => a.id - b.id)
+      .map((ws) => ({
+        id: ws.id,
+        name: ws.name,
+      }));
+  }
+
+  getFocusedWorkspace(): CompositorWorkspace | null {
+    const ws = this.hypr.focused_workspace;
+    if (!ws) return null;
+
+    return {
+      id: ws.id,
+      name: ws.name,
+    };
+  }
+
+  getWindows(): CompositorWindow[] {
+    return (this.hypr.get_clients() ?? []).map((client) => ({
+      address: client.address,
+      title: client.title,
+      appClass: client.class,
+      workspaceId: client.workspace.id,
+      hidden: client.hidden,
+    }));
+  }
+
+  getFocusedWindow(): CompositorWindow | null {
+    const client = this.hypr.focused_client;
+    if (!client) return null;
+
+    return {
+      address: client.address,
+      title: client.title,
+      appClass: client.class,
+      workspaceId: client.workspace.id,
+      hidden: client.hidden,
+    };
+  }
+
+  getWorkspaceWindows(workspaceId: number): CompositorWindow[] {
+    return this.getWindows().filter(
+      (win) => win.workspaceId === workspaceId && !win.hidden,
+    );
+  }
+
+  switchToWorkspace(workspaceId: number): void {
+    this.hypr.dispatch("workspace", String(workspaceId));
+  }
+
+  focusWindow(address: string): void {
+    this.hypr.dispatch("focuswindow", `address:${address}`);
+  }
+
+  connect(handlers: CompositorEventHandlers): () => void {
+    const connections: number[] = [];
+
+    if (handlers.onWorkspacesChanged) {
+      const id = this.hypr.connect(
+        "notify::workspaces",
+        handlers.onWorkspacesChanged,
+      );
+      connections.push(id);
+    }
+
+    if (handlers.onFocusedWorkspaceChanged) {
+      const id = this.hypr.connect(
+        "notify::focused-workspace",
+        handlers.onFocusedWorkspaceChanged,
+      );
+      connections.push(id);
+    }
+
+    if (handlers.onFocusedWindowChanged) {
+      const id = this.hypr.connect(
+        "notify::focused-client",
+        handlers.onFocusedWindowChanged,
+      );
+      connections.push(id);
+
+      // Also listen for title changes
+      const titleId = this.hypr.connect(
+        "notify::focused-title",
+        handlers.onFocusedWindowChanged,
+      );
+      connections.push(titleId);
+    }
+
+    if (handlers.onWindowAdded) {
+      const id = this.hypr.connect("client-added", handlers.onWindowAdded);
+      connections.push(id);
+    }
+
+    if (handlers.onWindowRemoved) {
+      const id = this.hypr.connect("client-removed", handlers.onWindowRemoved);
+      connections.push(id);
+    }
+
+    if (handlers.onWindowMoved) {
+      const id = this.hypr.connect("client-moved", handlers.onWindowMoved);
+      connections.push(id);
+    }
+
+    // Return disconnect function
+    return () => {
+      for (const id of connections) {
+        this.hypr.disconnect(id);
+      }
+    };
+  }
+}

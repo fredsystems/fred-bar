@@ -1,6 +1,6 @@
 # fredbar
 
-**fredbar** is a lightweight, modular system bar built with [AGS](https://github.com/Aylur/ags) and GTK4, designed as a modern replacement for Waybar in Wayland compositors (currently focused on Hyprland).
+**fredbar** is a lightweight, modular system bar built with [AGS](https://github.com/Aylur/ags) and GTK4, designed as a modern replacement for Waybar in Wayland compositors.
 
 It is opinionated, Home-Manager–first, and intentionally minimal: fredbar exposes system state clearly, avoids over-configuration, and is built as a real application rather than a pile of shell scripts.
 
@@ -13,7 +13,7 @@ It is opinionated, Home-Manager–first, and intentionally minimal: fredbar expo
 - Reserved screen space (layer-shell, no window overlap)
 - Modular "pill"-style widgets:
   - **System tray** - Native system tray with status icons
-  - **Workspaces + active window** - Hyprland workspace indicator and window title
+  - **Workspaces + active window** - Workspace indicator and window title (compositor-aware)
   - **Network** - Shows WiFi SSID or Ethernet connection with signal strength
   - **Volume** - Audio control with scroll to adjust, click to mute
   - **Battery** - Battery percentage and charging status (laptops)
@@ -24,12 +24,13 @@ It is opinionated, Home-Manager–first, and intentionally minimal: fredbar expo
 - **Home Manager integration** - Single-line enable in your NixOS config
 - **Optional user-level systemd service** - Easy lifecycle management
 - **Catppuccin Mocha color scheme** - Beautiful, cohesive theming
+- **Compositor abstraction** - Works across Wayland compositors with graceful feature degradation
 
 ## Requirements
 
 - NixOS (or another system using Home Manager)
 - Home Manager
-- Wayland compositor (tested with **Hyprland**)
+- Wayland compositor (fully supported: **Hyprland**, fallback mode for others)
 - AGS + Astal (handled automatically by the flake)
 
 > [!IMPORTANT]

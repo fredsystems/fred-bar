@@ -1,54 +1,45 @@
-import Hyprland from "gi://AstalHyprland";
 import Gtk from "gi://Gtk?version=4.0";
 import Pango from "gi://Pango?version=1.0";
 
+import { getCompositor } from "compositors";
 import { resolveAppIcon } from "helpers/icon-resolver";
 
-const hypr = Hyprland.get_default();
-
-let currentClient: Hyprland.Client | null = null;
-let titleHandlerId: number | null = null;
-
 export function WindowTitle(): Gtk.Box {
-  let label: Gtk.Label;
+  const compositor = getCompositor();
+
   let image: Gtk.Image;
+  let label: Gtk.Label;
   let box: Gtk.Box;
+  let currentWindowAddress: string | null = null;
 
   function update() {
-    const client = hypr.focused_client;
+    const window = compositor.getFocusedWindow();
 
-    // Disconnect from old client
-    if (currentClient && titleHandlerId !== null) {
-      currentClient.disconnect(titleHandlerId);
-      titleHandlerId = null;
-    }
+    // Track if we switched to a different window
+    const addressChanged = currentWindowAddress !== window?.address;
+    currentWindowAddress = window?.address ?? null;
 
-    currentClient = client;
-
-    if (client) {
-      titleHandlerId = client.connect("notify::title", () => {
-        label.set_label(client.title ?? "");
-        label.set_max_width_chars(40);
-      });
-
-      label.set_label(client.title ?? "");
+    if (window) {
+      label.set_label(window.title ?? "");
       label.set_max_width_chars(40);
 
-      const icon = resolveAppIcon(client.class);
-      if (icon) {
-        image.set_from_gicon(icon);
-        image.set_visible(true);
-      } else {
-        image.set_visible(false);
+      // Only update icon if window changed (not just title update)
+      if (addressChanged) {
+        const icon = resolveAppIcon(window.appClass);
+        if (icon) {
+          image.set_from_gicon(icon);
+          image.set_visible(true);
+        } else {
+          image.set_visible(false);
+        }
       }
+
+      box.set_visible(true);
     } else {
       label.set_label("");
       image.set_visible(false);
       box.set_visible(false);
-      return;
     }
-
-    box.set_visible(true);
   }
 
   image = new Gtk.Image({
@@ -68,18 +59,21 @@ export function WindowTitle(): Gtk.Box {
     spacing: 4,
     halign: Gtk.Align.CENTER,
     css_classes: ["window-title", "pill"],
-    visible: false, // Start hidden, update() will show if there's a focused client
+    visible: false, // Start hidden, update() will show if there's a focused window
   });
 
   box.append(image);
   box.append(label);
 
   update();
-  hypr.connect("notify::focused-client", update);
-  hypr.connect("notify::focused-title", update);
-  hypr.connect("client-added", update);
-  hypr.connect("client-removed", update);
-  hypr.connect("client-moved", update);
+
+  // Connect to compositor events
+  compositor.connect({
+    onFocusedWindowChanged: update,
+    onWindowAdded: update,
+    onWindowRemoved: update,
+    onWindowMoved: update,
+  });
 
   return box;
 }
