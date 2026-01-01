@@ -1,6 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
-import { resolveAppIcon } from "helpers/icon-resolver";
+import { resolveAppIcon, resolveNotificationIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
   notificationService,
@@ -47,11 +47,15 @@ function NotificationItem(
 
   // App icon (only show if not grouped, to avoid repetition)
   if (!isGrouped) {
-    const appGicon = resolveAppIcon(notif.appIcon || notif.appName);
+    const notifIcon = resolveNotificationIcon(
+      notif.image,
+      notif.appIcon,
+      notif.appName,
+    );
     let iconWidget: Gtk.Widget;
 
-    if (appGicon) {
-      const iconImage = Gtk.Image.new_from_gicon(appGicon);
+    if (notifIcon) {
+      const iconImage = Gtk.Image.new_from_gicon(notifIcon);
       iconImage.set_pixel_size(24);
       iconImage.set_css_classes(["notification-icon"]);
       iconWidget = iconImage;

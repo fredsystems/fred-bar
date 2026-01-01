@@ -112,7 +112,7 @@ function getNetworkInfo(
 
   // Priority 2: WiFi connection
   if (wifi && wifi.internet === Network.Internet.CONNECTED) {
-    const ssid = wifi.ssid || "Unknown";
+    const _ssid = wifi.ssid || "Unknown";
     const strength = wifi.strength;
     return {
       icon: wifiIcon(strength),

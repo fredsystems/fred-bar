@@ -1,6 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
-import { resolveAppIcon } from "helpers/icon-resolver";
+import { resolveNotificationIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
   notificationService,
@@ -38,12 +38,16 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     css_classes: ["popup-header"],
   });
 
-  // App icon - try to resolve from app, fallback to bell
-  const appGicon = resolveAppIcon(notification.appIcon || notification.appName);
+  // Notification icon - prioritize custom image, then app icon, fallback to bell
+  const notifIcon = resolveNotificationIcon(
+    notification.image,
+    notification.appIcon,
+    notification.appName,
+  );
   let iconWidget: Gtk.Widget;
 
-  if (appGicon) {
-    const iconImage = Gtk.Image.new_from_gicon(appGicon);
+  if (notifIcon) {
+    const iconImage = Gtk.Image.new_from_gicon(notifIcon);
     iconImage.set_pixel_size(24);
     iconImage.set_css_classes(["popup-icon"]);
     iconWidget = iconImage;

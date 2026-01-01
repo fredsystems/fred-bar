@@ -4,6 +4,7 @@ export interface NotificationData {
   id: number;
   appName: string;
   appIcon: string | null;
+  image: string | null; // Custom notification image (takes priority over appIcon)
   summary: string;
   body: string;
   time: number;
@@ -36,10 +37,16 @@ class NotificationService {
     const n = this.notifd.get_notification(id);
     if (!n) return;
 
+    // The image property contains custom notification images (image-path hint)
+    // The app_icon can also contain a custom icon path (via -i flag in notify-send)
+    const customImage = n.image || null;
+    const appIconOrPath = n.app_icon || n.desktop_entry || null;
+
     const notifData: NotificationData = {
       id: n.id,
       appName: n.app_name || "Unknown",
-      appIcon: n.app_icon || n.desktop_entry || null,
+      appIcon: appIconOrPath,
+      image: customImage,
       summary: n.summary || "",
       body: n.body || "",
       time: n.time,
@@ -79,15 +86,21 @@ class NotificationService {
     return this.notifd
       .get_notifications()
       .filter((n) => !this.dismissedIds.has(n.id))
-      .map((n) => ({
-        id: n.id,
-        appName: n.app_name || "Unknown",
-        appIcon: n.app_icon || n.desktop_entry || null,
-        summary: n.summary || "",
-        body: n.body || "",
-        time: n.time,
-        urgency: n.urgency,
-      }));
+      .map((n) => {
+        const customImage = n.image || null;
+        const appIconOrPath = n.app_icon || n.desktop_entry || null;
+
+        return {
+          id: n.id,
+          appName: n.app_name || "Unknown",
+          appIcon: appIconOrPath,
+          image: customImage,
+          summary: n.summary || "",
+          body: n.body || "",
+          time: n.time,
+          urgency: n.urgency,
+        };
+      });
   }
 
   getNotificationsByApp(): Map<string, NotificationData[]> {
