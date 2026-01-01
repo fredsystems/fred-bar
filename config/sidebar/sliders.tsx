@@ -4,18 +4,48 @@ import Gtk from "gi://Gtk?version=4.0";
 
 const audio = Wp.get_default();
 
-// Brightness control using /sys/class/backlight
+// Brightness control using /sys/class/backlight and /sys/class/leds
 interface BrightnessDevice {
   name: string;
+  displayName: string;
   path: string;
   max: number;
   current: number;
+  type: "backlight" | "keyboard";
+}
+
+function getDeviceDisplayName(
+  name: string,
+  type: "backlight" | "keyboard",
+): string {
+  // Handle common keyboard backlight patterns
+  if (type === "keyboard") {
+    if (name.includes("kbd_backlight")) return "Keyboard Backlight";
+    if (name.includes("::kbd_backlight")) {
+      const vendor = name.split("::")[0];
+      return `${vendor.charAt(0).toUpperCase() + vendor.slice(1)} Keyboard`;
+    }
+    return "Keyboard";
+  }
+
+  // Handle common backlight device names
+  if (name.includes("intel_backlight")) return "Display";
+  if (name.includes("amdgpu_bl")) return "Display";
+  if (name.includes("radeon_bl")) return "Display";
+  if (name.includes("nvidia_")) return "Display";
+  if (name.includes("acpi_video")) return "Display (ACPI)";
+  if (name.includes("gmux_backlight")) return "Display";
+  if (name.includes("backlight")) return "Display";
+
+  // Fallback: capitalize the name
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 function getBrightnessDevices(): BrightnessDevice[] {
   const devices: BrightnessDevice[] = [];
-  const backlightPath = "/sys/class/backlight";
 
+  // Check /sys/class/backlight for display backlight
+  const backlightPath = "/sys/class/backlight";
   try {
     const dir = GLib.Dir.open(backlightPath, 0);
     let name = dir.read_name();
@@ -46,9 +76,11 @@ function getBrightnessDevices(): BrightnessDevice[] {
           ) {
             devices.push({
               name,
+              displayName: getDeviceDisplayName(name, "backlight"),
               path: devicePath,
               max: maxBrightness,
               current: currentBrightness,
+              type: "backlight",
             });
           }
         }
@@ -58,6 +90,58 @@ function getBrightnessDevices(): BrightnessDevice[] {
     }
   } catch (_e) {
     // Backlight directory doesn't exist or can't be read
+  }
+
+  // Check /sys/class/leds for keyboard backlight
+  const ledsPath = "/sys/class/leds";
+  try {
+    const dir = GLib.Dir.open(ledsPath, 0);
+    let name = dir.read_name();
+
+    while (name !== null) {
+      // Only include keyboard backlight LEDs
+      if (name.includes("kbd_backlight") || name.includes("::kbd_backlight")) {
+        const devicePath = `${ledsPath}/${name}`;
+        const maxBrightnessFile = `${devicePath}/max_brightness`;
+        const brightnessFile = `${devicePath}/brightness`;
+
+        try {
+          const [maxSuccess, maxContent] =
+            GLib.file_get_contents(maxBrightnessFile);
+          const [curSuccess, curContent] =
+            GLib.file_get_contents(brightnessFile);
+
+          if (maxSuccess && curSuccess) {
+            const maxBrightness = parseInt(
+              new TextDecoder().decode(maxContent).trim(),
+              10,
+            );
+            const currentBrightness = parseInt(
+              new TextDecoder().decode(curContent).trim(),
+              10,
+            );
+
+            if (
+              !Number.isNaN(maxBrightness) &&
+              !Number.isNaN(currentBrightness)
+            ) {
+              devices.push({
+                name,
+                displayName: getDeviceDisplayName(name, "keyboard"),
+                path: devicePath,
+                max: maxBrightness,
+                current: currentBrightness,
+                type: "keyboard",
+              });
+            }
+          }
+        } catch (_e) {}
+      }
+
+      name = dir.read_name();
+    }
+  } catch (_e) {
+    // LEDs directory doesn't exist or can't be read
   }
 
   return devices;
@@ -100,7 +184,7 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
   header.append(icon);
 
   const label = new Gtk.Label({
-    label: device.name.charAt(0).toUpperCase() + device.name.slice(1),
+    label: device.displayName,
     css_classes: ["slider-label"],
     xalign: 0,
     hexpand: true,
@@ -142,15 +226,27 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
     const percentage = Math.round((value / device.max) * 100);
     valueLabel.label = `${percentage}%`;
 
-    // Update icon based on brightness level
-    if (percentage > 75) {
-      icon.label = "󰃠";
-    } else if (percentage > 50) {
-      icon.label = "󰃟";
-    } else if (percentage > 25) {
-      icon.label = "󰃞";
+    // Update icon based on device type and brightness level
+    if (device.type === "keyboard") {
+      if (percentage > 66) {
+        icon.label = "󰥸";
+      } else if (percentage > 33) {
+        icon.label = "󰥶";
+      } else if (percentage > 0) {
+        icon.label = "󰥴";
+      } else {
+        icon.label = "󰹐";
+      }
     } else {
-      icon.label = "󰃝";
+      if (percentage > 75) {
+        icon.label = "󰃠";
+      } else if (percentage > 50) {
+        icon.label = "󰃟";
+      } else if (percentage > 25) {
+        icon.label = "󰃞";
+      } else {
+        icon.label = "󰃝";
+      }
     }
 
     setBrightness(device.path, value);
@@ -194,9 +290,32 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
     return true;
   });
 
-  // Initial value
+  // Initial value and icon
   const percentage = Math.round((device.current / device.max) * 100);
   valueLabel.label = `${percentage}%`;
+
+  // Set initial icon based on device type and brightness level
+  if (device.type === "keyboard") {
+    if (percentage > 66) {
+      icon.label = "󰥸";
+    } else if (percentage > 33) {
+      icon.label = "󰥶";
+    } else if (percentage > 0) {
+      icon.label = "󰥴";
+    } else {
+      icon.label = "󰹐";
+    }
+  } else {
+    if (percentage > 75) {
+      icon.label = "󰃠";
+    } else if (percentage > 50) {
+      icon.label = "󰃟";
+    } else if (percentage > 25) {
+      icon.label = "󰃞";
+    } else {
+      icon.label = "󰃝";
+    }
+  }
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
