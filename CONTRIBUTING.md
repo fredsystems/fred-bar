@@ -57,14 +57,20 @@ The dev shell provides:
 config/
 ├── app.tsx                    # Entry point - creates bars for all monitors
 ├── style.css                  # Global styles (Catppuccin Mocha theme)
+├── compositors/               # Compositor abstraction layer
+│   ├── types.ts              # Generic compositor interfaces
+│   ├── index.ts              # Factory and auto-detection
+│   ├── hyprland.ts           # Hyprland adapter (AstalHyprland)
+│   ├── fallback.ts           # Fallback for unsupported compositors
+│   └── README.md             # Architecture documentation
 ├── helpers/                   # Shared utilities
 │   ├── tooltip.tsx           # Tooltip attachment helper
 │   └── resolvescripts.tsx    # Script path resolution
 ├── left/                      # Left-aligned widgets
 │   └── sys-tray/             # System tray (AstalTray)
 ├── center/                    # Center-aligned widgets
-│   ├── workspaces.tsx        # Workspace switcher (AstalHyprland)
-│   ├── window-title.tsx      # Active window title (AstalHyprland)
+│   ├── workspaces.tsx        # Workspace switcher (compositor-aware)
+│   ├── window-title.tsx      # Active window title (compositor-aware)
 │   └── window-workspaces-pill.tsx  # Combined workspace/window widget
 ├── right/                     # Right-aligned widgets
 │   ├── battery/              # Battery monitor (AstalBattery)
@@ -219,16 +225,52 @@ box.add_css_class("state-error");
 box.set_css_classes(["red-border", "big-text"]);
 ```
 
+#### 4. Compositor Abstraction
+
+For workspace and window management, use the compositor abstraction layer instead of directly importing `AstalHyprland`:
+
+**DO:**
+
+```typescript
+import { getCompositor } from "compositors";
+
+export function MyWidget(): Gtk.Box {
+  const compositor = getCompositor();
+
+  // Check capabilities before using features
+  if (!compositor.supportsWorkspaces) {
+    return createFallbackWidget();
+  }
+
+  const workspaces = compositor.getWorkspaces();
+  const focused = compositor.getFocusedWorkspace();
+
+  compositor.connect({
+    onWorkspacesChanged: updateUI,
+  });
+}
+```
+
+**DON'T:**
+
+```typescript
+import Hyprland from "gi://AstalHyprland";
+
+const hypr = Hyprland.get_default(); // Hardcoded to Hyprland
+```
+
+This ensures the bar works across different Wayland compositors. See `config/compositors/README.md` for full documentation.
+
 ### Available Astal Packages
 
-| Package       | Import               | Purpose                    |
-| ------------- | -------------------- | -------------------------- |
-| AstalBattery  | `gi://AstalBattery`  | UPower battery monitoring  |
-| AstalNetwork  | `gi://AstalNetwork`  | NetworkManager integration |
-| AstalWp       | `gi://AstalWp`       | WirePlumber/PipeWire audio |
-| AstalMpris    | `gi://AstalMpris`    | MPRIS media players        |
-| AstalTray     | `gi://AstalTray`     | System tray protocol       |
-| AstalHyprland | `gi://AstalHyprland` | Hyprland compositor        |
+| Package       | Import               | Purpose                                                  |
+| ------------- | -------------------- | -------------------------------------------------------- |
+| AstalBattery  | `gi://AstalBattery`  | UPower battery monitoring                                |
+| AstalNetwork  | `gi://AstalNetwork`  | NetworkManager integration                               |
+| AstalWp       | `gi://AstalWp`       | WirePlumber/PipeWire audio                               |
+| AstalMpris    | `gi://AstalMpris`    | MPRIS media players                                      |
+| AstalTray     | `gi://AstalTray`     | System tray protocol                                     |
+| AstalHyprland | `gi://AstalHyprland` | Hyprland compositor (use compositor abstraction instead) |
 
 To add a new Astal package, update `flake.nix`:
 

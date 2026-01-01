@@ -1,21 +1,7 @@
-import Hyprland from "gi://AstalHyprland";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { getCompositor } from "compositors";
 import { resolveAppIcon } from "helpers/icon-resolver";
-
-type Workspace = Hyprland.Workspace;
-type Client = Hyprland.Client;
-
-const hypr = Hyprland.get_default();
-
-/* -----------------------------
- * Helper: Get windows for workspace
- * ----------------------------- */
-function getWorkspaceWindows(workspaceId: number): Client[] {
-  return (hypr.get_clients() ?? []).filter(
-    (client) => client.workspace.id === workspaceId && !client.hidden,
-  );
-}
 
 /* -----------------------------
  * Helper: Format app class name
@@ -38,7 +24,9 @@ function formatAppClass(appClass: string): string {
 /* -----------------------------
  * Workspace Preview Popover
  * ----------------------------- */
-function createWorkspacePreview(ws: Workspace): Gtk.Popover {
+function createWorkspacePreview(workspaceId: number): Gtk.Popover {
+  const compositor = getCompositor();
+
   const popover = new Gtk.Popover({
     has_arrow: false,
     autohide: false,
@@ -59,7 +47,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
       child = next;
     }
 
-    const windows = getWorkspaceWindows(ws.id);
+    const windows = compositor.getWorkspaceWindows(workspaceId);
 
     if (windows.length === 0) {
       const emptyLabel = new Gtk.Label({
@@ -70,7 +58,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
     } else {
       // Add header
       const header = new Gtk.Label({
-        label: `Workspace ${ws.id} - ${windows.length} window${windows.length !== 1 ? "s" : ""}`,
+        label: `Workspace ${workspaceId} - ${windows.length} window${windows.length !== 1 ? "s" : ""}`,
         css_classes: ["workspace-preview-header"],
         xalign: 0,
       });
@@ -83,7 +71,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
       box.append(sep);
 
       // Add window list
-      for (const client of windows) {
+      for (const window of windows) {
         const windowBox = new Gtk.Box({
           orientation: Gtk.Orientation.HORIZONTAL,
           spacing: 8,
@@ -91,7 +79,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
         });
 
         // App icon
-        const icon = resolveAppIcon(client.class);
+        const icon = resolveAppIcon(window.appClass);
         if (icon) {
           const iconImage = new Gtk.Image({
             gicon: icon,
@@ -103,7 +91,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
 
         // Window title
         const titleLabel = new Gtk.Label({
-          label: client.title || client.class || "Unknown",
+          label: window.title || window.appClass || "Unknown",
           xalign: 0,
           hexpand: true,
           ellipsize: 3, // PANGO_ELLIPSIZE_END
@@ -112,7 +100,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
         });
 
         // Window class (app name) - formatted
-        const formattedClass = formatAppClass(client.class || "");
+        const formattedClass = formatAppClass(window.appClass || "");
         const classLabel = new Gtk.Label({
           label: formattedClass,
           css_classes: ["workspace-preview-window-class"],
@@ -128,7 +116,7 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
         });
 
         button.connect("clicked", () => {
-          hypr.dispatch("focuswindow", `address:${client.address}`);
+          compositor.focusWindow(window.address);
           popover.popdown();
         });
 
@@ -150,11 +138,19 @@ function createWorkspacePreview(ws: Workspace): Gtk.Popover {
  * Main Workspaces Widget
  * ----------------------------- */
 export function Workspaces(): Gtk.Box {
+  const compositor = getCompositor();
+
   const box = new Gtk.Box({
     spacing: 0,
     css_classes: ["workspaces", "pill"],
     valign: Gtk.Align.CENTER,
   });
+
+  // If compositor doesn't support workspaces, hide the widget
+  if (!compositor.supportsWorkspaces) {
+    box.set_visible(false);
+    return box;
+  }
 
   let popovers: Gtk.Popover[] = [];
 
@@ -176,11 +172,9 @@ export function Workspaces(): Gtk.Box {
       child = next;
     }
 
-    const workspaces: Workspace[] = (hypr.workspaces ?? [])
-      .filter((ws: Workspace) => ws.id > 0)
-      .sort((a: Workspace, b: Workspace) => a.id - b.id);
-
-    const focusedId = hypr.focused_workspace?.id ?? null;
+    const workspaces = compositor.getWorkspaces();
+    const focusedWorkspace = compositor.getFocusedWorkspace();
+    const focusedId = focusedWorkspace?.id ?? null;
 
     for (const ws of workspaces) {
       const active = focusedId === ws.id;
@@ -194,11 +188,11 @@ export function Workspaces(): Gtk.Box {
       button.set_child(label);
 
       button.connect("clicked", () => {
-        hypr.dispatch("workspace", String(ws.id));
+        compositor.switchToWorkspace(ws.id);
       });
 
       // Add workspace preview popover
-      const preview = createWorkspacePreview(ws);
+      const preview = createWorkspacePreview(ws.id);
       preview.set_parent(button);
       popovers.push(preview);
 
@@ -236,8 +230,12 @@ export function Workspaces(): Gtk.Box {
   }
 
   render();
-  hypr.connect("notify::workspaces", render);
-  hypr.connect("notify::focused-workspace", render);
+
+  // Connect to compositor events
+  compositor.connect({
+    onWorkspacesChanged: render,
+    onFocusedWorkspaceChanged: render,
+  });
 
   return box;
 }

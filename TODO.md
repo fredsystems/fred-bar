@@ -106,24 +106,23 @@
 
 ### Compositor Abstraction
 
-- [ ] **Make bar compositor-agnostic** - Currently hard-coded to Hyprland
-  - Center bar uses `AstalHyprland` for workspaces and window titles
-  - Need abstraction layer to support multiple compositors (Hyprland, Niri)
-  - **Proposed approach**:
-    - Create `compositors/` directory with common interface
-    - `compositors/hyprland.ts` - Uses AstalHyprland bindings
-    - `compositors/niri.ts` - Uses `niri` CLI commands (no IPC available)
-    - `compositors/fallback.ts` - Minimal/hidden features for unknown compositors
-    - Auto-detection based on environment or config
-  - **Niri limitations**:
-    - No IPC like Hyprland
-    - Scrolling workspace model doesn't map to traditional workspace list
-    - Workspaces feature would likely be hidden on Niri
-    - Window title could be obtained via `niri` command if available
-  - **Benefits**:
-    - Bar works across different Wayland compositors
-    - Graceful degradation when features aren't available
-    - Easier to add support for new compositors in future
+- [x] **Make bar compositor-agnostic** - ✅ COMPLETED
+  - ✅ Created `compositors/` directory with common interface (`CompositorAdapter`)
+  - ✅ `compositors/hyprland.ts` - Uses AstalHyprland bindings
+  - ✅ `compositors/fallback.ts` - Minimal/hidden features for unknown compositors
+  - ✅ Auto-detection based on environment variables
+  - ✅ All center widgets refactored to use compositor abstraction
+  - ✅ Widgets gracefully hide when compositor doesn't support features
+  - **Next steps**:
+    - [ ] Add Sway support (`compositors/sway.ts`)
+    - [ ] Add Niri support (`compositors/niri.ts`) - CLI-based, limited features
+    - [ ] Add River support if desired
+  - **Implementation details**:
+    - `types.ts` - Generic workspace/window interfaces
+    - `index.ts` - Factory with auto-detection
+    - Capability flags: `supportsWorkspaces`, `supportsWindows`
+    - Event system with disconnect callbacks
+    - See `config/compositors/README.md` for full documentation
 
 ## Future Enhancements
 

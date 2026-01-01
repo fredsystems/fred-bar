@@ -1,9 +1,13 @@
 import Gtk from "gi://Gtk?version=4.0";
+import { getCompositor } from "compositors";
 import { ActiveWorkspace } from "./active-workspace";
 import { WindowTitle } from "./window-title";
 import { Workspaces } from "./workspaces";
 
 export function WindowWorkspacesPill(): Gtk.Box {
+  const compositor = getCompositor();
+  const supportsWorkspaces = compositor.supportsWorkspaces;
+
   const activeWs = ActiveWorkspace();
   const workspaces = Workspaces();
   const title = WindowTitle();
@@ -23,24 +27,39 @@ export function WindowWorkspacesPill(): Gtk.Box {
     valign: Gtk.Align.CENTER,
   });
 
-  // LEFT → RIGHT
-  box.append(activeWs);
-  box.append(revealer);
-  box.append(title);
+  // If workspaces are supported, show workspace widgets
+  if (supportsWorkspaces) {
+    // LEFT → RIGHT
+    box.append(activeWs);
+    box.append(revealer);
+  }
 
-  const motion = new Gtk.EventControllerMotion();
+  // Always show window title if windows are supported
+  if (compositor.supportsWindows) {
+    box.append(title);
+  }
 
-  motion.connect("enter", () => {
-    activeWs.set_visible(false);
-    revealer.set_reveal_child(true);
-  });
+  // Only add hover behavior if workspaces are supported
+  if (supportsWorkspaces) {
+    const motion = new Gtk.EventControllerMotion();
 
-  motion.connect("leave", () => {
-    revealer.set_reveal_child(false);
-    activeWs.set_visible(true);
-  });
+    motion.connect("enter", () => {
+      activeWs.set_visible(false);
+      revealer.set_reveal_child(true);
+    });
 
-  box.add_controller(motion);
+    motion.connect("leave", () => {
+      revealer.set_reveal_child(false);
+      activeWs.set_visible(true);
+    });
+
+    box.add_controller(motion);
+  }
+
+  // Hide the entire pill if neither workspaces nor windows are supported
+  if (!supportsWorkspaces && !compositor.supportsWindows) {
+    box.set_visible(false);
+  }
 
   return box;
 }

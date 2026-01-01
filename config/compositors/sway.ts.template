@@ -1,0 +1,331 @@
+import GLib from "gi://GLib";
+import type {
+  CompositorAdapter,
+  CompositorEventHandlers,
+  CompositorWindow,
+  CompositorWorkspace,
+} from "./types";
+
+/**
+ * Sway compositor adapter (TEMPLATE - NOT YET IMPLEMENTED)
+ *
+ * This is a template showing how to implement support for Sway.
+ * Sway has IPC support via Unix socket, similar to i3.
+ *
+ * To implement:
+ * 1. Use swaymsg for IPC communication
+ * 2. Parse JSON responses
+ * 3. Set up event subscriptions
+ * 4. Handle workspace and window events
+ *
+ * Useful commands:
+ * - swaymsg -t get_workspaces
+ * - swaymsg -t get_tree
+ * - swaymsg -t subscribe -m '["workspace","window"]'
+ */
+export class SwayAdapter implements CompositorAdapter {
+  readonly name = "sway";
+  readonly supportsWorkspaces = true;
+  readonly supportsWindows = true;
+
+  private eventHandlers: CompositorEventHandlers = {};
+  private pollingInterval: number | null = null;
+
+  constructor() {
+    // TODO: Initialize Sway IPC connection
+    // Could use GLib.spawn_command_line_sync("swaymsg -t get_workspaces")
+    // Or implement proper IPC socket communication
+  }
+
+  getWorkspaces(): CompositorWorkspace[] {
+    // TODO: Execute: swaymsg -t get_workspaces
+    // Parse JSON response and map to CompositorWorkspace[]
+    //
+    // Example Sway workspace JSON:
+    // {
+    //   "id": 4,
+    //   "num": 1,
+    //   "name": "1",
+    //   "visible": true,
+    //   "focused": true,
+    //   "urgent": false,
+    //   ...
+    // }
+
+    try {
+      const [success, stdout] = GLib.spawn_command_line_sync(
+        "swaymsg -t get_workspaces",
+      );
+
+      if (!success || !stdout) {
+        return [];
+      }
+
+      const output = new TextDecoder().decode(stdout);
+      const workspaces = JSON.parse(output);
+
+      return workspaces
+        .map((ws: any) => ({
+          id: ws.num,
+          name: ws.name,
+        }))
+        .sort((a: CompositorWorkspace, b: CompositorWorkspace) => a.id - b.id);
+    } catch (error) {
+      console.error("[SwayAdapter] Failed to get workspaces:", error);
+      return [];
+    }
+  }
+
+  getFocusedWorkspace(): CompositorWorkspace | null {
+    // TODO: Get focused workspace from swaymsg -t get_workspaces
+    // Find the one with "focused": true
+
+    try {
+      const [success, stdout] = GLib.spawn_command_line_sync(
+        "swaymsg -t get_workspaces",
+      );
+
+      if (!success || !stdout) {
+        return null;
+      }
+
+      const output = new TextDecoder().decode(stdout);
+      const workspaces = JSON.parse(output);
+
+      const focused = workspaces.find((ws: any) => ws.focused);
+      if (!focused) return null;
+
+      return {
+        id: focused.num,
+        name: focused.name,
+      };
+    } catch (error) {
+      console.error("[SwayAdapter] Failed to get focused workspace:", error);
+      return null;
+    }
+  }
+
+  getWindows(): CompositorWindow[] {
+    // TODO: Execute: swaymsg -t get_tree
+    // Parse tree structure and extract all windows
+    //
+    // Need to recursively traverse the tree to find all "con" nodes
+    // that represent actual windows (type === "con" && app_id exists)
+
+    try {
+      const [success, stdout] = GLib.spawn_command_line_sync(
+        "swaymsg -t get_tree",
+      );
+
+      if (!success || !stdout) {
+        return [];
+      }
+
+      const output = new TextDecoder().decode(stdout);
+      const tree = JSON.parse(output);
+
+      const windows: CompositorWindow[] = [];
+
+      // Recursive function to extract windows from tree
+      function extractWindows(node: any, workspaceNum: number): void {
+        if (node.type === "con" && node.app_id) {
+          windows.push({
+            address: String(node.id),
+            title: node.name || "",
+            appClass: node.app_id || node.window_properties?.class || "",
+            workspaceId: workspaceNum,
+            hidden: !node.visible,
+          });
+        }
+
+        if (node.nodes) {
+          for (const child of node.nodes) {
+            extractWindows(child, workspaceNum);
+          }
+        }
+        if (node.floating_nodes) {
+          for (const child of node.floating_nodes) {
+            extractWindows(child, workspaceNum);
+          }
+        }
+      }
+
+      // Find workspace nodes and extract windows
+      function findWorkspaces(node: any): void {
+        if (node.type === "workspace" && node.num !== undefined) {
+          extractWindows(node, node.num);
+        }
+        if (node.nodes) {
+          for (const child of node.nodes) {
+            findWorkspaces(child);
+          }
+        }
+      }
+
+      findWorkspaces(tree);
+      return windows;
+    } catch (error) {
+      console.error("[SwayAdapter] Failed to get windows:", error);
+      return [];
+    }
+  }
+
+  getFocusedWindow(): CompositorWindow | null {
+    // TODO: Execute: swaymsg -t get_tree
+    // Find the node with "focused": true
+
+    try {
+      const [success, stdout] = GLib.spawn_command_line_sync(
+        "swaymsg -t get_tree",
+      );
+
+      if (!success || !stdout) {
+        return null;
+      }
+
+      const output = new TextDecoder().decode(stdout);
+      const tree = JSON.parse(output);
+
+      let focusedWindow: CompositorWindow | null = null;
+      let workspaceNum = 0;
+
+      function findFocused(node: any, currentWs: number): boolean {
+        if (node.type === "workspace") {
+          currentWs = node.num;
+        }
+
+        if (node.focused && node.type === "con" && node.app_id) {
+          focusedWindow = {
+            address: String(node.id),
+            title: node.name || "",
+            appClass: node.app_id || node.window_properties?.class || "",
+            workspaceId: currentWs,
+            hidden: !node.visible,
+          };
+          return true;
+        }
+
+        if (node.nodes) {
+          for (const child of node.nodes) {
+            if (findFocused(child, currentWs)) return true;
+          }
+        }
+        if (node.floating_nodes) {
+          for (const child of node.floating_nodes) {
+            if (findFocused(child, currentWs)) return true;
+          }
+        }
+
+        return false;
+      }
+
+      findFocused(tree, 0);
+      return focusedWindow;
+    } catch (error) {
+      console.error("[SwayAdapter] Failed to get focused window:", error);
+      return null;
+    }
+  }
+
+  getWorkspaceWindows(workspaceId: number): CompositorWindow[] {
+    return this.getWindows().filter(
+      (win) => win.workspaceId === workspaceId && !win.hidden,
+    );
+  }
+
+  switchToWorkspace(workspaceId: number): void {
+    // TODO: Execute: swaymsg workspace number <id>
+    try {
+      GLib.spawn_command_line_async(`swaymsg workspace number ${workspaceId}`);
+    } catch (error) {
+      console.error("[SwayAdapter] Failed to switch workspace:", error);
+    }
+  }
+
+  focusWindow(address: string): void {
+    // TODO: Execute: swaymsg [con_id=<address>] focus
+    try {
+      GLib.spawn_command_line_async(`swaymsg [con_id=${address}] focus`);
+    } catch (error) {
+      console.error("[SwayAdapter] Failed to focus window:", error);
+    }
+  }
+
+  connect(handlers: CompositorEventHandlers): () => void {
+    // TODO: Implement proper event subscription
+    // Sway supports event subscription via: swaymsg -t subscribe -m '["workspace","window"]'
+    // This is a simplified polling-based implementation for now
+
+    this.eventHandlers = handlers;
+
+    // Start polling for changes (not ideal, but works)
+    // Better: implement proper IPC event subscription
+    let lastWorkspacesJson = "";
+    let lastFocusedWorkspaceId: number | null = null;
+    let lastFocusedWindowAddress: string | null = null;
+
+    this.pollingInterval = setInterval(() => {
+      // Check for workspace changes
+      if (handlers.onWorkspacesChanged) {
+        const workspaces = this.getWorkspaces();
+        const workspacesJson = JSON.stringify(workspaces);
+        if (workspacesJson !== lastWorkspacesJson) {
+          lastWorkspacesJson = workspacesJson;
+          handlers.onWorkspacesChanged();
+        }
+      }
+
+      // Check for focused workspace changes
+      if (handlers.onFocusedWorkspaceChanged) {
+        const focused = this.getFocusedWorkspace();
+        if (focused?.id !== lastFocusedWorkspaceId) {
+          lastFocusedWorkspaceId = focused?.id ?? null;
+          handlers.onFocusedWorkspaceChanged();
+        }
+      }
+
+      // Check for focused window changes
+      if (handlers.onFocusedWindowChanged) {
+        const focused = this.getFocusedWindow();
+        if (focused?.address !== lastFocusedWindowAddress) {
+          lastFocusedWindowAddress = focused?.address ?? null;
+          handlers.onFocusedWindowChanged();
+        }
+      }
+    }, 100) as unknown as number; // Poll every 100ms
+
+    // Return disconnect function
+    return () => {
+      if (this.pollingInterval !== null) {
+        clearInterval(this.pollingInterval);
+        this.pollingInterval = null;
+      }
+    };
+  }
+}
+
+/*
+ * IMPLEMENTATION NOTES:
+ *
+ * This template uses polling which is not ideal. For a production implementation:
+ *
+ * 1. Use proper IPC event subscription:
+ *    - swaymsg -t subscribe -m '["workspace","window"]'
+ *    - Parse newline-delimited JSON events
+ *    - React to specific event types
+ *
+ * 2. Consider using a background service:
+ *    - GLib.spawn_async for the subscription
+ *    - Read from stdout in a loop
+ *    - Parse JSON and trigger appropriate callbacks
+ *
+ * 3. Handle edge cases:
+ *    - IPC socket disconnection/reconnection
+ *    - Malformed JSON responses
+ *    - Missing workspace/window data
+ *
+ * 4. Performance:
+ *    - Cache results when possible
+ *    - Only update when events actually occur
+ *    - Avoid redundant swaymsg calls
+ */
