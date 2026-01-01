@@ -104,6 +104,7 @@ export function ActiveWorkspace(): Gtk.Label {
 - `config/compositors/types.ts` - Interface definitions
 - `config/compositors/index.ts` - Factory and detection
 - `config/compositors/hyprland.ts` - Hyprland adapter
+- `config/compositors/niri.ts` - Niri adapter
 - `config/compositors/fallback.ts` - Fallback adapter
 - `config/compositors/README.md` - Architecture docs
 - `config/compositors/sway.ts.template` - Example template
@@ -123,8 +124,8 @@ export function ActiveWorkspace(): Gtk.Label {
 | Compositor | Status             | Method              | Capabilities                |
 | ---------- | ------------------ | ------------------- | --------------------------- |
 | Hyprland   | ✅ Fully supported | AstalHyprland (IPC) | Workspaces, Windows, Events |
+| Niri       | ✅ Fully supported | niri msg (CLI)      | Workspaces, Windows, Events |
 | Sway       | 📝 Template ready  | swaymsg (IPC)       | Workspaces, Windows, Events |
-| Niri       | 🔜 Planned         | niri msg (CLI)      | Limited (no workspaces)     |
 | River      | 🔮 Future          | river-control       | TBD                         |
 | Others     | ⚠️ Fallback mode   | None                | No workspaces/windows shown |
 
@@ -222,11 +223,11 @@ Should show:
 ## Future Work
 
 - [ ] Implement Sway adapter (template ready)
-- [ ] Implement Niri adapter (CLI-based, limited features)
 - [ ] Add River support if desired
 - [ ] Consider event buffering/debouncing for performance
 - [ ] Add compositor-specific configuration options
 - [ ] Improve fallback mode with basic window info from other sources
+- [ ] Test Niri multi-monitor workspace handling edge cases
 
 ## Compatibility
 

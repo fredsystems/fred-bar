@@ -1,6 +1,7 @@
 import GLib from "gi://GLib";
 import { FallbackAdapter } from "./fallback";
 import { HyprlandAdapter } from "./hyprland";
+import { NiriAdapter } from "./niri";
 import type { CompositorAdapter } from "./types";
 
 /**
@@ -23,9 +24,21 @@ function detectCompositor(): string {
     if (desktop.includes("hyprland")) {
       return "hyprland";
     }
+    if (desktop.includes("niri")) {
+      return "niri";
+    }
     // Add more compositor checks here as they are implemented
     // if (desktop.includes("sway")) return "sway";
-    // if (desktop.includes("niri")) return "niri";
+  }
+
+  // Check for niri by trying to run niri msg
+  try {
+    const [success] = GLib.spawn_command_line_sync("niri msg version");
+    if (success) {
+      return "niri";
+    }
+  } catch {
+    // niri not available
   }
 
   // If we're on Wayland but don't recognize the compositor
@@ -59,11 +72,18 @@ function createCompositorAdapter(compositorName?: string): CompositorAdapter {
         return new FallbackAdapter();
       }
 
+    case "niri":
+      try {
+        return new NiriAdapter();
+      } catch (error) {
+        console.error("[Compositor] Failed to initialize Niri adapter:", error);
+        console.warn("[Compositor] Falling back to fallback adapter");
+        return new FallbackAdapter();
+      }
+
     // Add more compositor adapters here as they are implemented
     // case "sway":
     //   return new SwayAdapter();
-    // case "niri":
-    //   return new NiriAdapter();
 
     case "fallback":
     default:
@@ -89,6 +109,32 @@ export function getCompositor(compositorName?: string): CompositorAdapter {
     compositorInstance = createCompositorAdapter(compositorName);
   }
   return compositorInstance;
+}
+
+/**
+ * Get monitor connector name from a GTK widget
+ * Returns the monitor's connector name (e.g., "DP-2", "HDMI-A-1")
+ */
+export function getMonitorConnectorName(widget: any): string | null {
+  try {
+    const display = widget.get_display?.();
+    if (!display) return null;
+
+    const native = widget.get_native?.();
+    if (!native) return null;
+
+    const surface = native.get_surface?.();
+    if (!surface) return null;
+
+    const monitor = display.get_monitor_at_surface?.(surface);
+    if (!monitor) return null;
+
+    const connector = monitor.get_connector?.();
+    return connector || null;
+  } catch (error) {
+    console.error("[Compositor] Failed to get monitor connector:", error);
+    return null;
+  }
 }
 
 /**

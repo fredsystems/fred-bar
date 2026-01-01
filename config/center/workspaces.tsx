@@ -1,6 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0";
 
-import { getCompositor } from "compositors";
+import { getCompositor, getMonitorConnectorName } from "compositors";
 import { resolveAppIcon } from "helpers/icon-resolver";
 
 /* -----------------------------
@@ -24,7 +24,10 @@ function formatAppClass(appClass: string): string {
 /* -----------------------------
  * Workspace Preview Popover
  * ----------------------------- */
-function createWorkspacePreview(workspaceId: number): Gtk.Popover {
+function createWorkspacePreview(
+  workspaceId: number,
+  workspaceName: string,
+): Gtk.Popover {
   const compositor = getCompositor();
 
   const popover = new Gtk.Popover({
@@ -58,7 +61,7 @@ function createWorkspacePreview(workspaceId: number): Gtk.Popover {
     } else {
       // Add header
       const header = new Gtk.Label({
-        label: `Workspace ${workspaceId} - ${windows.length} window${windows.length !== 1 ? "s" : ""}`,
+        label: `Workspace ${workspaceName} - ${windows.length} window${windows.length !== 1 ? "s" : ""}`,
         css_classes: ["workspace-preview-header"],
         xalign: 0,
       });
@@ -139,6 +142,7 @@ function createWorkspacePreview(workspaceId: number): Gtk.Popover {
  * ----------------------------- */
 export function Workspaces(): Gtk.Box {
   const compositor = getCompositor();
+  let monitorName: string | null = null;
 
   const box = new Gtk.Box({
     spacing: 0,
@@ -172,8 +176,11 @@ export function Workspaces(): Gtk.Box {
       child = next;
     }
 
-    const workspaces = compositor.getWorkspaces();
-    const focusedWorkspace = compositor.getFocusedWorkspace();
+    // Use cached monitor name
+    const workspaces = compositor.getWorkspaces(monitorName || undefined);
+    const focusedWorkspace = compositor.getFocusedWorkspace(
+      monitorName || undefined,
+    );
     const focusedId = focusedWorkspace?.id ?? null;
 
     for (const ws of workspaces) {
@@ -184,7 +191,7 @@ export function Workspaces(): Gtk.Box {
         focusable: false,
       });
 
-      const label = new Gtk.Label({ label: String(ws.id) });
+      const label = new Gtk.Label({ label: String(ws.name || ws.id) });
       button.set_child(label);
 
       button.connect("clicked", () => {
@@ -192,7 +199,7 @@ export function Workspaces(): Gtk.Box {
       });
 
       // Add workspace preview popover
-      const preview = createWorkspacePreview(ws.id);
+      const preview = createWorkspacePreview(ws.id, String(ws.name || ws.id));
       preview.set_parent(button);
       popovers.push(preview);
 
@@ -228,6 +235,25 @@ export function Workspaces(): Gtk.Box {
       box.append(button);
     }
   }
+
+  // Get monitor from the window's monitor property
+  box.connect("realize", () => {
+    const root = box.get_root();
+    if (!root) return;
+
+    const display = root.get_display();
+    if (!display) return;
+
+    const monitorProp = (root as any).monitor;
+    if (monitorProp === undefined) return;
+
+    const monitors = display.get_monitors();
+    const monitor = monitors.get_item(monitorProp) as any;
+    if (monitor) {
+      monitorName = monitor?.get_connector?.() || null;
+      render();
+    }
+  });
 
   render();
 

@@ -30,7 +30,7 @@ It is opinionated, Home-Manager–first, and intentionally minimal: fredbar expo
 
 - NixOS (or another system using Home Manager)
 - Home Manager
-- Wayland compositor (fully supported: **Hyprland**, fallback mode for others)
+- Wayland compositor (fully supported: **Hyprland**, **Niri**; fallback mode for others)
 - AGS + Astal (handled automatically by the flake)
 
 > [!IMPORTANT]
@@ -178,14 +178,14 @@ Each widget in fredbar follows a consistent pattern:
 
 fredbar leverages the following Astal packages for native system integration:
 
-| Package             | Purpose                         | Widget(s)                    |
-| ------------------- | ------------------------------- | ---------------------------- |
-| `astal.hyprland`    | Hyprland compositor integration | Workspaces, window titles    |
-| `astal.tray`        | System tray protocol            | System tray                  |
-| `astal.battery`     | UPower battery monitoring       | Battery pill                 |
-| `astal.network`     | NetworkManager integration      | Network pill                 |
-| `astal.wireplumber` | WirePlumber/PipeWire audio      | Volume pill, media detection |
-| `astal.mpris`       | MPRIS media player protocol     | Media player detection       |
+| Package             | Purpose                         | Widget(s)                                 |
+| ------------------- | ------------------------------- | ----------------------------------------- |
+| `astal.hyprland`    | Hyprland compositor integration | Workspaces, window titles (Hyprland only) |
+| `astal.tray`        | System tray protocol            | System tray                               |
+| `astal.battery`     | UPower battery monitoring       | Battery pill                              |
+| `astal.network`     | NetworkManager integration      | Network pill                              |
+| `astal.wireplumber` | WirePlumber/PipeWire audio      | Volume pill, media detection              |
+| `astal.mpris`       | MPRIS media player protocol     | Media player detection                    |
 
 All widgets use **reactive programming** - they subscribe to GObject signals and update automatically when system state changes. No polling required!
 
