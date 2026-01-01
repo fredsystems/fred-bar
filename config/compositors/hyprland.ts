@@ -25,11 +25,11 @@ export class HyprlandAdapter implements CompositorAdapter {
   getWorkspaces(monitor?: string): CompositorWorkspace[] {
     // Hyprland doesn't have per-monitor workspaces, ignore monitor parameter
     return (this.hypr.workspaces ?? [])
-      .filter((ws) => ws.id > 0)
+      .filter((ws) => ws && ws.id > 0)
       .sort((a, b) => a.id - b.id)
       .map((ws) => ({
-        id: ws.id,
-        name: ws.name,
+        id: ws.id ?? 0,
+        name: ws.name ?? String(ws.id ?? 0),
       }));
   }
 
@@ -39,31 +39,35 @@ export class HyprlandAdapter implements CompositorAdapter {
     if (!ws) return null;
 
     return {
-      id: ws.id,
-      name: ws.name,
+      id: ws.id ?? 0,
+      name: ws.name ?? String(ws.id ?? 0),
     };
   }
 
   getWindows(): CompositorWindow[] {
-    return (this.hypr.get_clients() ?? []).map((client) => ({
-      address: client.address,
-      title: client.title,
-      appClass: client.class,
-      workspaceId: client.workspace.id,
-      hidden: client.hidden,
-    }));
+    return (this.hypr.get_clients() ?? [])
+      .filter(
+        (client) => client.workspace !== null && client.workspace !== undefined,
+      )
+      .map((client) => ({
+        address: client.address ?? "",
+        title: client.title ?? "",
+        appClass: client.class ?? "",
+        workspaceId: client.workspace.id,
+        hidden: client.hidden ?? false,
+      }));
   }
 
   getFocusedWindow(): CompositorWindow | null {
     const client = this.hypr.focused_client;
-    if (!client) return null;
+    if (!client || !client.workspace) return null;
 
     return {
-      address: client.address,
-      title: client.title,
-      appClass: client.class,
+      address: client.address ?? "",
+      title: client.title ?? "",
+      appClass: client.class ?? "",
       workspaceId: client.workspace.id,
-      hidden: client.hidden,
+      hidden: client.hidden ?? false,
     };
   }
 

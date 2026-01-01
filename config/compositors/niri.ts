@@ -170,11 +170,13 @@ export class NiriAdapter implements CompositorAdapter {
       }>;
 
       return windowsJson
-        .filter((w) => w.workspace_id !== null)
+        .filter(
+          (w) => w && w.workspace_id !== null && w.workspace_id !== undefined,
+        )
         .map((w) => ({
-          address: String(w.id),
-          title: w.title || "",
-          appClass: w.app_id || "",
+          address: String(w.id ?? ""),
+          title: w.title ?? "",
+          appClass: w.app_id ?? "",
           workspaceId: w.workspace_id!,
           hidden: false,
         }));
@@ -208,14 +210,18 @@ export class NiriAdapter implements CompositorAdapter {
         workspace_id: number | null;
       } | null;
 
-      if (!windowJson || windowJson.workspace_id === null) {
+      if (
+        !windowJson ||
+        windowJson.workspace_id === null ||
+        windowJson.workspace_id === undefined
+      ) {
         return null;
       }
 
       return {
-        address: String(windowJson.id),
-        title: windowJson.title || "",
-        appClass: windowJson.app_id || "",
+        address: String(windowJson.id ?? ""),
+        title: windowJson.title ?? "",
+        appClass: windowJson.app_id ?? "",
         workspaceId: windowJson.workspace_id,
         hidden: false,
       };
