@@ -194,7 +194,13 @@ export class NiriAdapter implements CompositorAdapter {
         return null;
       }
 
-      const output = new TextDecoder().decode(stdout);
+      const output = new TextDecoder().decode(stdout).trim();
+
+      // Handle empty response (no focused window)
+      if (!output) {
+        return null;
+      }
+
       const windowJson = JSON.parse(output) as {
         id: number;
         title: string | null;
