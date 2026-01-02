@@ -152,21 +152,45 @@ export function TimePill(): Gtk.Button {
     updateLabels();
   }
 
+  function ordinal(n: number): string {
+    if (n % 100 >= 11 && n % 100 <= 13) {
+      return "th";
+    }
+
+    switch (n % 10) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  }
+
   function updateLabels() {
     const now = GLib.DateTime.new_now_local();
 
-    // Don’t change the main label while popover is open
+    // Main clock
     shortLabel.set_label(now.format("%H:%M:%S") ?? "");
+
     if (expanded) {
-      longLabel.set_label(now.format(" %A, %B %e, %Y") ?? "");
+      const day = now.get_day_of_month();
+      longLabel.set_label(
+        `${now.format(" %A, %B")} ${day}${ordinal(day)}, ${now.format("%Y")}`,
+      );
     } else {
       longLabel.set_label("");
     }
 
+    // Popover clocks
     if (popoverOpen) {
       for (const [tzid, label] of clockLabels.entries()) {
         const dt = nowIn(tzid);
-        if (label) label.set_label(dt?.format("%H:%M:%S") ?? "--:--");
+        if (label) {
+          label.set_label(dt?.format("%H:%M:%S") ?? "--:--");
+        }
       }
     }
   }
