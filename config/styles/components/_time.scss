@@ -50,6 +50,27 @@
 // World Clocks
 // ============================================
 
+.clock-line {
+  padding: variables.$spacing-md;
+  border-radius: variables.$radius-md;
+  transition: background-color 0.3s ease;
+
+  &.daytime {
+    background-color: rgba(variables.$ctp-yellow, 0.1);
+  }
+
+  &.nighttime {
+    background-color: rgba(variables.$ctp-blue, 0.1);
+  }
+
+  label {
+    color: variables.$ctp-text;
+    font-weight: variables.$font-weight-normal;
+    margin-top: variables.$spacing-sm;
+    font-size: variables.$font-size-sm;
+  }
+}
+
 .clock-city {
   color: variables.$ctp-text;
   opacity: variables.$opacity-subtle;
