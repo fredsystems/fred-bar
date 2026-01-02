@@ -47,6 +47,8 @@
         [
           # Updates tracking (waybar-updates.sh)
           git
+          ddcutil
+          rwedid
 
           # Idle inhibit (idleinhibit-toolbar.sh)
           # systemd and gawk are already in base system
