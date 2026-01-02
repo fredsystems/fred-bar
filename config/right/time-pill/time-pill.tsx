@@ -2,6 +2,8 @@
 
 import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
+import type Cairo from "cairo";
+import { attachTooltip } from "helpers/tooltip";
 
 type WorldClock = {
   label: string;
@@ -102,38 +104,159 @@ export function TimePill(): Gtk.Button {
     xalign: 0.0,
   });
 
-  const clocksBox = new Gtk.Box({
-    orientation: Gtk.Orientation.VERTICAL,
-    spacing: 0,
+  const clocksGrid = new Gtk.Grid({
+    column_spacing: 8,
+    row_spacing: 8,
+    column_homogeneous: true,
   });
 
   popRoot.append(title);
-  popRoot.append(clocksBox);
+  popRoot.append(clocksGrid);
 
-  const clockLabels = new Map<string, Gtk.Label>();
+  const clockDrawingAreas = new Map<string, Gtk.DrawingArea>();
+  const clockBoxes = new Map<string, Gtk.Box>();
+
+  let clockIndex = 0;
+
+  function drawAnalogClock(
+    _area: Gtk.DrawingArea,
+    cr: Cairo.Context,
+    width: number,
+    height: number,
+    dt: GLib.DateTime | null,
+    isDay: boolean,
+  ) {
+    if (!dt) return;
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 2 - 4;
+
+    // Background circle
+    cr.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+    if (isDay) {
+      cr.setSourceRGBA(0.976, 0.886, 0.686, 0.2); // Yellow with transparency
+    } else {
+      cr.setSourceRGBA(0.537, 0.706, 0.98, 0.2); // Blue with transparency
+    }
+    cr.fillPreserve();
+
+    // Border
+    if (isDay) {
+      cr.setSourceRGBA(0.976, 0.886, 0.686, 0.8); // Yellow
+    } else {
+      cr.setSourceRGBA(0.455, 0.78, 0.925, 0.8); // Sapphire
+    }
+    cr.setLineWidth(2);
+    cr.stroke();
+
+    // Hour marks
+    for (let i = 0; i < 12; i++) {
+      const angle = (i * Math.PI) / 6 - Math.PI / 2;
+      const x1 = centerX + Math.cos(angle) * (radius - 8);
+      const y1 = centerY + Math.sin(angle) * (radius - 8);
+      const x2 = centerX + Math.cos(angle) * (radius - 3);
+      const y2 = centerY + Math.sin(angle) * (radius - 3);
+
+      cr.moveTo(x1, y1);
+      cr.lineTo(x2, y2);
+      cr.setSourceRGBA(0.804, 0.839, 0.957, 0.6); // Text color dimmed
+      cr.setLineWidth(2);
+      cr.stroke();
+    }
+
+    const hour = dt.get_hour() % 12;
+    const minute = dt.get_minute();
+    const second = dt.get_second();
+
+    // Hour hand
+    const hourAngle = ((hour + minute / 60) * Math.PI) / 6 - Math.PI / 2;
+    cr.moveTo(centerX, centerY);
+    cr.lineTo(
+      centerX + Math.cos(hourAngle) * (radius * 0.5),
+      centerY + Math.sin(hourAngle) * (radius * 0.5),
+    );
+    cr.setSourceRGBA(0.804, 0.839, 0.957, 1); // Text color
+    cr.setLineWidth(3);
+    cr.stroke();
+
+    // Minute hand
+    const minuteAngle = ((minute + second / 60) * Math.PI) / 30 - Math.PI / 2;
+    cr.moveTo(centerX, centerY);
+    cr.lineTo(
+      centerX + Math.cos(minuteAngle) * (radius * 0.7),
+      centerY + Math.sin(minuteAngle) * (radius * 0.7),
+    );
+    cr.setSourceRGBA(0.804, 0.839, 0.957, 1); // Text color
+    cr.setLineWidth(2);
+    cr.stroke();
+
+    // Second hand
+    const secondAngle = (second * Math.PI) / 30 - Math.PI / 2;
+    cr.moveTo(centerX, centerY);
+    cr.lineTo(
+      centerX + Math.cos(secondAngle) * (radius * 0.8),
+      centerY + Math.sin(secondAngle) * (radius * 0.8),
+    );
+    if (isDay) {
+      cr.setSourceRGBA(0.976, 0.886, 0.686, 1); // Yellow
+    } else {
+      cr.setSourceRGBA(0.455, 0.78, 0.925, 1); // Sapphire
+    }
+    cr.setLineWidth(1);
+    cr.stroke();
+
+    // Center dot
+    cr.arc(centerX, centerY, 3, 0, 2 * Math.PI);
+    cr.setSourceRGBA(0.804, 0.839, 0.957, 1); // Text color
+    cr.fill();
+  }
 
   for (const c of CLOCKS) {
     const line = new Gtk.Box({
-      orientation: Gtk.Orientation.HORIZONTAL,
-      spacing: 10,
+      orientation: Gtk.Orientation.VERTICAL,
+      spacing: 8,
       hexpand: true,
+      css_classes: ["clock-line"],
     });
 
-    const left = new Gtk.Label({
+    const clockArea = new Gtk.DrawingArea({
+      content_width: 60,
+      content_height: 60,
+    });
+
+    clockArea.set_draw_func((area, cr, width, height) => {
+      const dt = nowIn(c.tzid);
+      const isDay = dt ? isDaytime(dt) : true;
+      drawAnalogClock(area, cr, width, height, dt, isDay);
+    });
+
+    const label = new Gtk.Label({
       label: c.label,
-      xalign: 0.0,
+      xalign: 0.5,
       hexpand: true,
     });
 
-    const right = new Gtk.Label({
-      label: "--:--",
-      xalign: 1.0,
+    line.append(clockArea);
+    line.append(label);
+
+    const col = clockIndex % 3;
+    const row = Math.floor(clockIndex / 3);
+    clocksGrid.attach(line, col, row, 1, 1);
+
+    clockDrawingAreas.set(c.tzid, clockArea);
+    clockBoxes.set(c.tzid, line);
+
+    // Attach tooltip with live updates
+    attachTooltip(line, {
+      text: () => {
+        const dt = nowIn(c.tzid);
+        return dt ? format12Hour(dt) : "--:--";
+      },
+      updateInterval: 1000, // Update every second
     });
 
-    line.append(left);
-    line.append(right);
-    clocksBox.append(line);
-    clockLabels.set(c.tzid, right);
+    clockIndex++;
   }
 
   /* ───────── Helpers ───────── */
@@ -169,6 +292,22 @@ export function TimePill(): Gtk.Button {
     }
   }
 
+  function format12Hour(dt: GLib.DateTime): string {
+    const hour = dt.get_hour();
+    const minute = dt.get_minute();
+    const second = dt.get_second();
+    const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const ampm = hour < 12 ? "AM" : "PM";
+    const minStr = minute.toString().padStart(2, "0");
+    const secStr = second.toString().padStart(2, "0");
+    return `${hour12}:${minStr}:${secStr} ${ampm}`;
+  }
+
+  function isDaytime(dt: GLib.DateTime): boolean {
+    const hour = dt.get_hour();
+    return hour >= 6 && hour < 18;
+  }
+
   function updateLabels() {
     const now = GLib.DateTime.new_now_local();
 
@@ -186,34 +325,28 @@ export function TimePill(): Gtk.Button {
 
     // Popover clocks
     if (popoverOpen) {
-      for (const [tzid, label] of clockLabels.entries()) {
+      for (const [tzid, area] of clockDrawingAreas.entries()) {
         const dt = nowIn(tzid);
-        if (label) {
-          label.set_label(dt?.format("%H:%M:%S") ?? "--:--");
+
+        // Apply day/night styling
+        const box = clockBoxes.get(tzid);
+        if (box && dt) {
+          box.remove_css_class("daytime");
+          box.remove_css_class("nighttime");
+          box.add_css_class(isDaytime(dt) ? "daytime" : "nighttime");
+        }
+
+        // Redraw the clock
+        if (area) {
+          area.queue_draw();
         }
       }
     }
   }
 
   function sizePopoverToMonitorEdge() {
-    const display = button.get_display();
-    const native = button.get_native();
-    const surface = native?.get_surface();
-    if (!display || !surface) return;
-
-    const monitor = display.get_monitor_at_surface(surface);
-    if (!monitor) return;
-
-    const geo = monitor.get_geometry();
-
-    const root = button.get_root();
-    if (!(root instanceof Gtk.Widget)) return;
-
-    const [ok, xInRoot] = button.translate_coordinates(root, 0, 0);
-    if (!ok) return;
-
-    const remaining = geo.width - xInRoot;
-    popRoot.set_size_request(Math.max(remaining, 200), -1);
+    // Set a fixed comfortable width for the 3-column layout
+    popRoot.set_size_request(320, -1);
   }
 
   /* ───────── Tick ───────── */
