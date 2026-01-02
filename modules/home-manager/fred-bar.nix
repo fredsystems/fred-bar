@@ -52,5 +52,13 @@ in
         WantedBy = [ ];
       };
     };
+
+    # NOTE: DDC/CI monitor brightness control requires system-level configuration.
+    # Add to your NixOS configuration:
+    #
+    #   hardware.i2c.enable = true;
+    #   users.users.<username>.extraGroups = [ "i2c" ];
+    #
+    # This will create the i2c group and add udev rules for /dev/i2c-* devices.
   };
 }

@@ -498,19 +498,6 @@
 .slider-icon {
   font-size: variables.$font-size-base;
   color: variables.$ctp-text;
-}
-
-.slider-icon-btn {
-  padding: variables.$spacing-sm;
-  border-radius: 6px;
-  background-color: transparent;
-  border: none;
-  color: variables.$ctp-text;
-  transition: background-color variables.$transition-normal;
-
-  &:hover {
-    background-color: variables.$ctp-surface2;
-  }
 
   &.muted {
     color: variables.$ctp-red;

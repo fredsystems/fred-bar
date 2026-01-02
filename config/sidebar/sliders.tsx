@@ -11,7 +11,7 @@ interface BrightnessDevice {
   path: string;
   max: number;
   current: number;
-  type: "backlight" | "keyboard";
+  type: "backlight" | "keyboard" | "ddcci";
 }
 
 function getDeviceDisplayName(
@@ -39,6 +39,89 @@ function getDeviceDisplayName(
 
   // Fallback: capitalize the name
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+// Cache for DDC monitor info to avoid slow detection on every call
+let ddcMonitorsCache: Array<{
+  bus: string;
+  name: string;
+  max: number;
+}> | null = null;
+
+function getDDCMonitors(): BrightnessDevice[] {
+  // Return cached results or empty - don't block on detection
+  if (ddcMonitorsCache !== null) {
+    const devices: BrightnessDevice[] = [];
+    for (const monitor of ddcMonitorsCache) {
+      devices.push({
+        name: `ddcci-${monitor.bus}`,
+        displayName: monitor.name,
+        path: monitor.bus,
+        max: monitor.max,
+        current: 50, // Default to 50, will be updated by async call in widget
+        type: "ddcci",
+      });
+    }
+    return devices;
+  }
+
+  // First time - detect monitors (blocking, but only happens once per session)
+  const monitors: Array<{ bus: string; name: string; max: number }> = [];
+
+  try {
+    const [success, stdout] = GLib.spawn_command_line_sync(
+      "ddcutil detect --sleep-multiplier 0.1",
+    );
+
+    if (success && stdout) {
+      const output = new TextDecoder().decode(stdout);
+      const lines = output.split("\n");
+
+      let currentDisplay: { displayNum: string; name: string } | null = null;
+
+      for (const line of lines) {
+        const displayMatch = line.match(/Display\s+(\d+)/);
+        if (displayMatch) {
+          currentDisplay = { displayNum: displayMatch[1], name: "" };
+          continue;
+        }
+
+        const nameMatch = line.match(/Monitor:\s+(.+)/);
+        if (nameMatch && currentDisplay) {
+          currentDisplay.name = nameMatch[1].trim();
+        }
+
+        const busMatch = line.match(/I2C bus:\s+\/dev\/i2c-(\d+)/);
+        if (busMatch && currentDisplay) {
+          monitors.push({
+            bus: busMatch[1],
+            name: currentDisplay.name || `Monitor ${currentDisplay.displayNum}`,
+            max: 100,
+          });
+          currentDisplay = null;
+        }
+      }
+    }
+  } catch (_e) {
+    // ddcutil not available or failed
+  }
+
+  ddcMonitorsCache = monitors;
+  const devices: BrightnessDevice[] = [];
+
+  for (const monitor of monitors) {
+    // Start with cached max, brightness will be updated async
+    devices.push({
+      name: `ddcci-${monitor.bus}`,
+      displayName: monitor.name,
+      path: monitor.bus,
+      max: monitor.max,
+      current: 50, // Default to 50, will be updated by async call in widget
+      type: "ddcci",
+    });
+  }
+
+  return devices;
 }
 
 function getBrightnessDevices(): BrightnessDevice[] {
@@ -144,10 +227,34 @@ function getBrightnessDevices(): BrightnessDevice[] {
     // LEDs directory doesn't exist or can't be read
   }
 
+  // Check for DDC/CI external monitors
+  const ddcMonitors = getDDCMonitors();
+  devices.push(...ddcMonitors);
+
   return devices;
 }
 
-function setBrightness(devicePath: string, value: number): void {
+function setBrightness(
+  devicePath: string,
+  value: number,
+  type: "backlight" | "keyboard" | "ddcci",
+): void {
+  if (type === "ddcci") {
+    // DDC/CI monitor - use ddcutil with faster settings
+    try {
+      const busNum = devicePath; // For DDC devices, path is the bus number
+      const percentage = Math.round(value);
+
+      GLib.spawn_command_line_async(
+        `ddcutil setvcp 10 ${percentage} --bus ${busNum} --sleep-multiplier 0.1 --noverify`,
+      );
+    } catch (e) {
+      console.error("Failed to set DDC brightness:", e);
+    }
+    return;
+  }
+
+  // Backlight or keyboard brightness
   try {
     // Use brightnessctl if available (handles permissions better)
     const deviceName = devicePath.split("/").pop();
@@ -218,6 +325,7 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
   scale.set_css_classes(["slider-scale", "brightness-slider"]);
 
   let isChanging = false;
+  let debounceTimeout: number | null = null;
 
   scale.connect("value-changed", () => {
     if (isChanging) return;
@@ -249,7 +357,21 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
       }
     }
 
-    setBrightness(device.path, value);
+    // Debounce brightness changes, especially for slow DDC/CI
+    if (debounceTimeout !== null) {
+      GLib.source_remove(debounceTimeout);
+    }
+
+    const debounceDelay = device.type === "ddcci" ? 300 : 50;
+    debounceTimeout = GLib.timeout_add(
+      GLib.PRIORITY_DEFAULT,
+      debounceDelay,
+      () => {
+        setBrightness(device.path, value, device.type);
+        debounceTimeout = null;
+        return false;
+      },
+    );
   });
 
   container.append(scale);
@@ -265,30 +387,69 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
       Math.min(device.max, currentValue - dy * step),
     );
     scale.set_value(newValue);
-    setBrightness(device.path, newValue);
+    // setBrightness is debounced in value-changed handler
     return true;
   });
   container.add_controller(scrollController);
 
-  // Poll for external brightness changes
-  const pollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
-    try {
-      const [success, content] = GLib.file_get_contents(
-        `${device.path}/brightness`,
-      );
-      if (success) {
-        const current = parseInt(new TextDecoder().decode(content).trim(), 10);
-        if (!Number.isNaN(current) && current !== scale.get_value()) {
-          isChanging = true;
-          scale.set_value(current);
-          isChanging = false;
+  // Initial brightness fetch for DDC monitors (async)
+  if (device.type === "ddcci") {
+    GLib.spawn_command_line_async(
+      `ddcutil getvcp 10 --bus ${device.path} --brief --sleep-multiplier 0.1`,
+    );
+    // Read result asynchronously
+    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+      try {
+        const [success, stdout] = GLib.spawn_command_line_sync(
+          `ddcutil getvcp 10 --bus ${device.path} --brief --sleep-multiplier 0.1`,
+        );
+        if (success && stdout) {
+          const output = new TextDecoder().decode(stdout);
+          const match = output.match(/VCP\s+10\s+\w+\s+(\d+)\s+(\d+)/);
+          if (match) {
+            const current = parseInt(match[1], 10);
+            const max = parseInt(match[2], 10);
+            if (!Number.isNaN(current) && !Number.isNaN(max)) {
+              isChanging = true;
+              scale.set_range(0, max);
+              scale.set_value(current);
+              isChanging = false;
+            }
+          }
         }
+      } catch (_e) {
+        // Failed to get initial brightness
       }
-    } catch (_e) {
-      // Ignore poll errors
-    }
-    return true;
-  });
+      return false; // Don't repeat
+    });
+  }
+
+  // Poll for external brightness changes (only for sysfs devices, DDC is too slow)
+  const pollInterval =
+    device.type === "ddcci"
+      ? null
+      : GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+          try {
+            // Poll sysfs brightness
+            const [success, content] = GLib.file_get_contents(
+              `${device.path}/brightness`,
+            );
+            if (success) {
+              const current = parseInt(
+                new TextDecoder().decode(content).trim(),
+                10,
+              );
+              if (!Number.isNaN(current) && current !== scale.get_value()) {
+                isChanging = true;
+                scale.set_value(current);
+                isChanging = false;
+              }
+            }
+          } catch (_e) {
+            // Ignore poll errors
+          }
+          return true;
+        });
 
   // Initial value and icon
   const percentage = Math.round((device.current / device.max) * 100);
@@ -319,7 +480,12 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
-    GLib.source_remove(pollInterval);
+    if (pollInterval !== null) {
+      GLib.source_remove(pollInterval);
+    }
+    if (debounceTimeout !== null) {
+      GLib.source_remove(debounceTimeout);
+    }
   };
 
   return container;
@@ -344,6 +510,14 @@ function VolumeSlider(
     label: type === "speaker" ? "󰕾" : "󰍬",
     css_classes: ["slider-icon"],
   });
+  header.append(icon);
+
+  // Make the icon clickable to toggle mute
+  const iconGesture = new Gtk.GestureClick();
+  iconGesture.connect("pressed", () => {
+    endpoint.mute = !endpoint.mute;
+  });
+  icon.add_controller(iconGesture);
 
   const label = new Gtk.Label({
     label: type === "speaker" ? "Volume" : "Microphone",
@@ -388,17 +562,6 @@ function VolumeSlider(
     endpoint.volume = value;
   });
 
-  // Make the icon clickable to toggle mute
-  const iconButton = new Gtk.Button({
-    css_classes: ["slider-icon-btn"],
-    child: icon,
-  });
-  iconButton.connect("clicked", () => {
-    endpoint.mute = !endpoint.mute;
-  });
-
-  header.prepend(iconButton);
-
   container.append(scale);
 
   // Add scroll event controller for mouse wheel support
@@ -441,9 +604,9 @@ function VolumeSlider(
     }
 
     if (muted) {
-      iconButton.add_css_class("muted");
+      icon.add_css_class("muted");
     } else {
-      iconButton.remove_css_class("muted");
+      icon.remove_css_class("muted");
     }
 
     // Update scale value if not currently changing
@@ -512,3 +675,13 @@ export function Sliders(): Gtk.Box {
 
   return container;
 }
+
+// Pre-warm DDC monitor detection cache in background on module load
+// This prevents the first sidebar open from being slow
+GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
+  if (ddcMonitorsCache === null) {
+    // Trigger detection in background
+    getDDCMonitors();
+  }
+  return false; // Don't repeat
+});
