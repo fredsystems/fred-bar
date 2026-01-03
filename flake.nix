@@ -11,6 +11,11 @@
       url = "github:FredSystems/pre-commit-checks";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    fredcal = {
+      url = "github:FredSystems/fred-cal";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -20,6 +25,7 @@
       precommit,
       ags,
       astal,
+      fredcal,
       ...
     }:
     let
@@ -45,13 +51,10 @@
         in
         with pkgs;
         [
-          # Updates tracking (waybar-updates.sh)
           git
           ddcutil
           rwedid
-
-          # Idle inhibit (idleinhibit-toolbar.sh)
-          # systemd and gawk are already in base system
+          fredcal.packages.${system}.default
         ];
     in
     {
@@ -89,6 +92,7 @@
 
             _module.args = {
               fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
+              fredcalPkg = fredcal.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
               inherit (self.lib) fredbarAstalPackages fredbarRuntimePackages;
             };
