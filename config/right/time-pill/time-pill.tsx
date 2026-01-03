@@ -4,6 +4,7 @@ import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
 import type Cairo from "cairo";
 import { attachTooltip } from "helpers/tooltip";
+import { CalendarView } from "./calendar-view";
 
 type WorldClock = {
   label: string;
@@ -259,6 +260,17 @@ export function TimePill(): Gtk.Button {
     clockIndex++;
   }
 
+  // Separator between clocks and calendar
+  const separator = new Gtk.Separator({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    css_classes: ["time-popover-separator"],
+  });
+  popRoot.append(separator);
+
+  // Calendar view
+  const calendarView = CalendarView();
+  popRoot.append(calendarView);
+
   /* ───────── Helpers ───────── */
 
   function applyExpanded(next: boolean) {
@@ -345,8 +357,8 @@ export function TimePill(): Gtk.Button {
   }
 
   function sizePopoverToMonitorEdge() {
-    // Set a fixed comfortable width for the 3-column layout
-    popRoot.set_size_request(320, -1);
+    // Set a wider width to accommodate calendar view
+    popRoot.set_size_request(450, -1);
   }
 
   /* ───────── Tick ───────── */

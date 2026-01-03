@@ -79,3 +79,128 @@
 .clock-time {
   color: variables.$ctp-rosewater;
 }
+
+// ============================================
+// Calendar View
+// ============================================
+
+.calendar-view {
+  padding: variables.$spacing-xs variables.$spacing-md variables.$spacing-md
+    variables.$spacing-md;
+  background-color: variables.$ctp-mantle;
+  border-radius: variables.$radius-md;
+  margin-bottom: variables.$spacing-md;
+}
+
+.calendar-header {
+  padding: 0;
+  margin-bottom: variables.$spacing-sm;
+}
+
+.calendar-header-title {
+  color: variables.$ctp-mauve;
+  font-weight: variables.$font-weight-bold;
+  font-size: variables.$font-size-base;
+}
+
+.calendar-status {
+  color: variables.$ctp-overlay2;
+  font-size: variables.$font-size-sm;
+  opacity: variables.$opacity-subtle;
+}
+
+.calendar-scrolled {
+  background-color: variables.$ctp-base;
+  border-radius: variables.$radius-sm;
+  border: variables.$border-width-normal solid variables.$ctp-surface0;
+}
+
+.calendar-events {
+  padding: variables.$spacing-sm;
+}
+
+.calendar-section {
+  padding: 0;
+  margin: 0;
+}
+
+.all-day-section {
+  padding-bottom: variables.$spacing-md;
+}
+
+.timed-section {
+  padding-top: 0;
+}
+
+.section-title {
+  color: variables.$ctp-subtext1;
+  font-weight: variables.$font-weight-semibold;
+  font-size: variables.$font-size-sm;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: variables.$spacing-sm;
+  opacity: variables.$opacity-subtle;
+}
+
+.calendar-separator {
+  background-color: variables.$ctp-surface0;
+  margin: variables.$spacing-md 0;
+}
+
+// Calendar Events
+.calendar-event {
+  padding: variables.$spacing-sm;
+  border-radius: variables.$radius-sm;
+  background-color: variables.$ctp-surface0;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: variables.$ctp-surface1;
+  }
+}
+
+.all-day-event {
+  border-left: 3px solid variables.$ctp-mauve;
+  margin-bottom: variables.$spacing-sm;
+}
+
+.timed-event {
+  border-left: 3px solid variables.$ctp-blue;
+  margin-bottom: variables.$spacing-sm;
+}
+
+.event-title {
+  color: variables.$ctp-text;
+  font-weight: variables.$font-weight-semibold;
+  font-size: variables.$font-size-base;
+}
+
+.event-time {
+  color: variables.$ctp-subtext0;
+  font-size: variables.$font-size-sm;
+  font-variant-numeric: tabular-nums;
+}
+
+.event-calendar {
+  color: variables.$ctp-sapphire;
+  font-size: variables.$font-size-xs;
+  font-weight: variables.$font-weight-medium;
+}
+
+.event-location {
+  color: variables.$ctp-subtext1;
+  font-size: variables.$font-size-xs;
+}
+
+.calendar-empty,
+.calendar-loading {
+  color: variables.$ctp-overlay2;
+  font-style: italic;
+  padding: variables.$spacing-md;
+  opacity: variables.$opacity-subtle;
+}
+
+.time-popover-separator {
+  background-color: variables.$ctp-surface0;
+  margin: variables.$spacing-md 0;
+}
