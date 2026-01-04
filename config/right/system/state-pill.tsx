@@ -7,9 +7,6 @@ import type { AggregatedSystemState } from "./state/helpers/aggregate";
 import type { SystemSignal } from "./state/helpers/normalize";
 import { systemState } from "./state/modules/system";
 
-// Neutral icon shown when system is idle
-const IDLE_ICON = "󰒓";
-
 /* Semantic → color mapping (mirrors Catppuccin vars) */
 const SEVERITY_COLOR: Record<string, string> = {
   idle: "#a6adc8", // subtext0 - muted
@@ -99,8 +96,6 @@ export function StatePill(): Gtk.Button {
 
     button.add_css_class(`state-${state.severity}`);
 
-    const isIdle = state.severity === "idle";
-
     // Clear existing icons
     let child = iconBox.get_first_child();
     while (child) {
@@ -112,62 +107,51 @@ export function StatePill(): Gtk.Button {
     // Update notification count from service
     notificationCount = notificationService.getPendingCount();
 
-    // Add icons (multiple if available)
-    if (isIdle) {
-      const idleIcon = new Gtk.Label({ label: IDLE_ICON });
-      iconBox.append(idleIcon);
-    } else if (state.icons.length > 0) {
-      // Create a map of icons to their source severity
-      const iconSeverityMap = new Map<string, string>();
-      for (const source of state.sources) {
-        if (source.icon) {
-          iconSeverityMap.set(source.icon, source.severity);
-        }
+    // Create a map of icons to their source severity
+    const iconSeverityMap = new Map<string, string>();
+    for (const source of state.sources) {
+      if (source.icon) {
+        iconSeverityMap.set(source.icon, source.severity);
       }
+    }
 
-      for (let i = 0; i < state.icons.length; i++) {
-        const icon = state.icons[i];
+    // Always display all icons
+    for (let i = 0; i < state.icons.length; i++) {
+      const icon = state.icons[i];
 
-        // For notification icon, use overlay with badge
-        if (icon === "󰂚" && notificationCount > 0) {
-          const overlay = new Gtk.Overlay({
-            css_classes: ["notification-icon-overlay"],
-          });
+      // For notification icon, use overlay with badge
+      if (icon === "󰂚" && notificationCount > 0) {
+        const overlay = new Gtk.Overlay({
+          css_classes: ["notification-icon-overlay"],
+        });
 
-          const bellLabel = new Gtk.Label({ label: icon });
-          const severity = iconSeverityMap.get(icon) || "idle";
-          const color = SEVERITY_COLOR[severity];
-          bellLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
+        const bellLabel = new Gtk.Label({ label: icon });
+        const severity = iconSeverityMap.get(icon) || "idle";
+        const color = SEVERITY_COLOR[severity];
+        bellLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
 
-          overlay.set_child(bellLabel);
+        overlay.set_child(bellLabel);
 
-          // Badge
-          const badge = new Gtk.Label({
-            label:
-              notificationCount > 99 ? "99+" : notificationCount.toString(),
-            css_classes: ["notification-badge"],
-            halign: Gtk.Align.END,
-            valign: Gtk.Align.START,
-          });
-          overlay.add_overlay(badge);
+        // Badge
+        const badge = new Gtk.Label({
+          label: notificationCount > 99 ? "99+" : notificationCount.toString(),
+          css_classes: ["notification-badge"],
+          halign: Gtk.Align.END,
+          valign: Gtk.Align.START,
+        });
+        overlay.add_overlay(badge);
 
-          iconBox.append(overlay);
-        } else {
-          const iconLabel = new Gtk.Label({ label: icon });
+        iconBox.append(overlay);
+      } else {
+        const iconLabel = new Gtk.Label({ label: icon });
 
-          // Color the icon based on its severity
-          const severity = iconSeverityMap.get(icon) || "idle";
-          const color = SEVERITY_COLOR[severity];
-          iconLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
+        // Color the icon based on its severity
+        const severity = iconSeverityMap.get(icon) || "idle";
+        const color = SEVERITY_COLOR[severity];
+        iconLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
 
-          iconBox.append(iconLabel);
-        }
+        iconBox.append(iconLabel);
       }
-    } else if (state.icon) {
-      const iconLabel = new Gtk.Label({ label: state.icon });
-      const color = SEVERITY_COLOR[state.severity];
-      iconLabel.set_markup(`<span foreground="${color}">${state.icon}</span>`);
-      iconBox.append(iconLabel);
     }
   }
 
