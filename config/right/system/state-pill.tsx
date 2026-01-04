@@ -7,12 +7,22 @@ import type { AggregatedSystemState } from "./state/helpers/aggregate";
 import type { SystemSignal } from "./state/helpers/normalize";
 import { systemState } from "./state/modules/system";
 
-/* Semantic → color mapping (mirrors Catppuccin vars) */
+/*
+ * Semantic → color mapping for tooltips (mirrors Catppuccin SCSS vars)
+ * These hex values match the variables in config/styles/base/_variables.scss:
+ * - idle: $ctp-subtext0
+ * - info: $ctp-info ($ctp-blue)
+ * - warn: $ctp-warning ($ctp-yellow)
+ * - error: $ctp-error ($ctp-red)
+ *
+ * Note: Only used for Pango markup in tooltips.
+ * Icon colors use CSS classes (state-icon-*) defined in _status-pills.scss
+ */
 const SEVERITY_COLOR: Record<string, string> = {
-  idle: "#a6adc8", // subtext0 - muted
-  info: "#89b4fa", // blue
-  warn: "#f9e2af", // yellow
-  error: "#f38ba8", // red
+  idle: "#a6adc8", // $ctp-subtext0
+  info: "#89b4fa", // $ctp-blue
+  warn: "#f9e2af", // $ctp-yellow
+  error: "#f38ba8", // $ctp-red
 };
 
 function tooltipLineMarkup(s: SystemSignal): string {
@@ -125,10 +135,11 @@ export function StatePill(): Gtk.Button {
           css_classes: ["notification-icon-overlay"],
         });
 
-        const bellLabel = new Gtk.Label({ label: icon });
         const severity = iconSeverityMap.get(icon) || "idle";
-        const color = SEVERITY_COLOR[severity];
-        bellLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
+        const bellLabel = new Gtk.Label({
+          label: icon,
+          css_classes: [`state-icon-${severity}`],
+        });
 
         overlay.set_child(bellLabel);
 
@@ -143,12 +154,11 @@ export function StatePill(): Gtk.Button {
 
         iconBox.append(overlay);
       } else {
-        const iconLabel = new Gtk.Label({ label: icon });
-
-        // Color the icon based on its severity
         const severity = iconSeverityMap.get(icon) || "idle";
-        const color = SEVERITY_COLOR[severity];
-        iconLabel.set_markup(`<span foreground="${color}">${icon}</span>`);
+        const iconLabel = new Gtk.Label({
+          label: icon,
+          css_classes: [`state-icon-${severity}`],
+        });
 
         iconBox.append(iconLabel);
       }
