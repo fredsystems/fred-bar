@@ -6,6 +6,75 @@ import type { CalendarData, CalendarEvent } from "./calendar-service";
 import { getCalendarService } from "./calendar-service";
 
 /**
+ * Convert various color formats to 6-digit hex (GTK-compatible)
+ * Strips alpha channel as GTK CSS doesn't support it well
+ */
+function normalizeColor(color: string): string {
+  // Handle rgb/rgba format - extract RGB values
+  if (color.startsWith("rgb")) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+      const r = parseInt(match[1]).toString(16).padStart(2, "0");
+      const g = parseInt(match[2]).toString(16).padStart(2, "0");
+      const b = parseInt(match[3]).toString(16).padStart(2, "0");
+      return `#${r}${g}${b}`;
+    }
+  }
+
+  // Hex format - normalize to 6-digit
+  if (color.startsWith("#")) {
+    const hex = color.substring(1);
+
+    // 8-digit hex with alpha: #RRGGBBAA -> strip alpha
+    if (hex.length === 8) {
+      return `#${hex.substring(0, 6)}`;
+    }
+
+    // 6-digit hex: #RRGGBB - already good
+    if (hex.length === 6) {
+      return color;
+    }
+
+    // 4-digit hex with alpha: #RGBA -> strip alpha and expand
+    if (hex.length === 4) {
+      return `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+    }
+
+    // 3-digit hex: #RGB -> expand to 6 digits
+    if (hex.length === 3) {
+      return `#${hex[0]}${hex[0]}${hex[1]}${hex[1]}${hex[2]}${hex[2]}`;
+    }
+  }
+
+  // Fallback - return as-is
+  return color;
+}
+
+/**
+ * Apply calendar color as inline CSS to a widget
+ */
+function applyCalendarColor(
+  widget: Gtk.Widget,
+  color: string | undefined,
+): void {
+  if (!color) return;
+
+  const normalizedColor = normalizeColor(color);
+  console.log(`Using color ${color} -> ${normalizedColor}`);
+
+  const cssProvider = new Gtk.CssProvider();
+  const css = `.calendar-event { border-left: 3px solid ${normalizedColor}; }`;
+
+  console.log(`CSS: ${css}`);
+
+  cssProvider.load_from_data(css, -1);
+
+  widget
+    .get_style_context()
+    .add_provider(cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER);
+}
+
+/**
  * Parse ISO date string to GLib.DateTime in local timezone
  */
 function parseDateTime(isoString: string): GLib.DateTime | null {
@@ -67,6 +136,9 @@ function createAllDayEventWidget(event: CalendarEvent): Gtk.Box {
     hexpand: true,
   });
 
+  // Apply calendar color to left border
+  applyCalendarColor(box, event.calendar_color);
+
   const titleLabel = new Gtk.Label({
     label: event.summary || "Untitled Event",
     xalign: 0,
@@ -97,6 +169,9 @@ function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
     css_classes: ["calendar-event", "timed-event"],
     hexpand: true,
   });
+
+  // Apply calendar color to left border
+  applyCalendarColor(box, event.calendar_color);
 
   // Time column
   const timeLabel = new Gtk.Label({
