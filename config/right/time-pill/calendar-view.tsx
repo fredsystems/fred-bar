@@ -6,6 +6,161 @@ import type { CalendarData, CalendarEvent } from "./calendar-service";
 import { getCalendarService } from "./calendar-service";
 
 /**
+ * Catppuccin Mocha Color Palette (colorful colors only)
+ * Mirrors colors from config/styles/base/_variables.scss
+ * Excludes grays (text/overlay/surface) to ensure vibrant color matching
+ */
+const CATPPUCCIN_COLORS: Record<string, string> = {
+  rosewater: "#f5e0dc",
+  flamingo: "#f2cdcd",
+  pink: "#f5c2e7",
+  mauve: "#cba6f7",
+  red: "#f38ba8",
+  maroon: "#eba0ac",
+  peach: "#fab387",
+  yellow: "#f9e2af",
+  green: "#a6e3a1",
+  teal: "#94e2d5",
+  sky: "#89dceb",
+  sapphire: "#74c7ec",
+  blue: "#89b4fa",
+  lavender: "#b4befe",
+};
+
+/**
+ * Parse hex color to RGB components
+ */
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = hex.replace("#", "");
+
+  if (normalized.length === 6) {
+    return {
+      r: parseInt(normalized.substring(0, 2), 16),
+      g: parseInt(normalized.substring(2, 4), 16),
+      b: parseInt(normalized.substring(4, 6), 16),
+    };
+  }
+
+  if (normalized.length === 8) {
+    return {
+      r: parseInt(normalized.substring(0, 2), 16),
+      g: parseInt(normalized.substring(2, 4), 16),
+      b: parseInt(normalized.substring(4, 6), 16),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Convert RGB to HSL color space
+ * Returns { h: 0-360, s: 0-100, l: 0-100 }
+ */
+function rgbToHsl(
+  r: number,
+  g: number,
+  b: number,
+): { h: number; s: number; l: number } {
+  r /= 255;
+  g /= 255;
+  b /= 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+
+  if (max === min) {
+    // Achromatic (gray)
+    return { h: 0, s: 0, l: l * 100 };
+  }
+
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+  let h = 0;
+  if (max === r) {
+    h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  } else if (max === g) {
+    h = ((b - r) / d + 2) / 6;
+  } else {
+    h = ((r - g) / d + 4) / 6;
+  }
+
+  return {
+    h: h * 360,
+    s: s * 100,
+    l: l * 100,
+  };
+}
+
+/**
+ * Calculate color distance in HSL space
+ * Prioritizes hue matching for vibrant colors, uses luminance for grays
+ */
+function hslDistance(
+  hsl1: { h: number; s: number; l: number },
+  hsl2: { h: number; s: number; l: number },
+): number {
+  // For achromatic colors (low saturation), ignore hue and focus on lightness
+  const isAchromatic1 = hsl1.s < 10;
+  const isAchromatic2 = hsl2.s < 10;
+
+  if (isAchromatic1 || isAchromatic2) {
+    // Match based on lightness for grays
+    return Math.abs(hsl1.l - hsl2.l);
+  }
+
+  // For colorful colors, prioritize hue, then consider saturation and lightness
+  // Hue is circular (0 and 360 are the same)
+  let hueDiff = Math.abs(hsl1.h - hsl2.h);
+  if (hueDiff > 180) {
+    hueDiff = 360 - hueDiff;
+  }
+
+  // Weight hue heavily, saturation and lightness less so
+  return (
+    hueDiff * 2.0 +
+    Math.abs(hsl1.s - hsl2.s) * 0.5 +
+    Math.abs(hsl1.l - hsl2.l) * 0.5
+  );
+}
+
+/**
+ * Find the closest Catppuccin color to the given color using HSL matching
+ */
+function findClosestCatppuccinColor(color: string): string {
+  // We may want to switch to LAB/LCH color space
+  const normalizedInput = normalizeColor(color);
+  const inputRgb = hexToRgb(normalizedInput);
+
+  if (!inputRgb) {
+    return CATPPUCCIN_COLORS.blue; // Default fallback
+  }
+
+  const inputHsl = rgbToHsl(inputRgb.r, inputRgb.g, inputRgb.b);
+
+  let closestColor = CATPPUCCIN_COLORS.blue;
+  let closestName = "blue";
+  let minDistance = Infinity;
+
+  for (const [name, hex] of Object.entries(CATPPUCCIN_COLORS)) {
+    const ctpRgb = hexToRgb(hex);
+    if (!ctpRgb) continue;
+
+    const ctpHsl = rgbToHsl(ctpRgb.r, ctpRgb.g, ctpRgb.b);
+    const distance = hslDistance(inputHsl, ctpHsl);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestColor = hex;
+      closestName = name;
+    }
+  }
+
+  return closestColor;
+}
+
+/**
  * Convert various color formats to 6-digit hex (GTK-compatible)
  * Strips alpha channel as GTK CSS doesn't support it well
  */
@@ -57,21 +212,24 @@ function applyCalendarColor(
   widget: Gtk.Widget,
   color: string | undefined,
 ): void {
-  if (!color) return;
+  if (!color) {
+    return;
+  }
 
-  const normalizedColor = normalizeColor(color);
-  console.log(`Using color ${color} -> ${normalizedColor}`);
+  // Map to closest Catppuccin color
+  const ctpColor = findClosestCatppuccinColor(color);
 
   const cssProvider = new Gtk.CssProvider();
-  const css = `.calendar-event { border-left: 3px solid ${normalizedColor}; }`;
+  const css = `.calendar-event { border-left: 3px solid ${ctpColor}; }`;
 
-  console.log(`CSS: ${css}`);
-
-  cssProvider.load_from_data(css, -1);
-
-  widget
-    .get_style_context()
-    .add_provider(cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER);
+  try {
+    cssProvider.load_from_data(css, -1);
+    widget
+      .get_style_context()
+      .add_provider(cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER);
+  } catch (error) {
+    console.error("Failed to apply CSS:", error);
+  }
 }
 
 /**
@@ -163,6 +321,10 @@ function createAllDayEventWidget(event: CalendarEvent): Gtk.Box {
  * Create a timed event widget
  */
 function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
+  console.log(
+    `Creating timed event: ${event.summary}, color: ${event.calendar_color}`,
+  );
+
   const box = new Gtk.Box({
     orientation: Gtk.Orientation.HORIZONTAL,
     spacing: 8,

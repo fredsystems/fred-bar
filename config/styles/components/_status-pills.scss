@@ -83,6 +83,26 @@
 }
 
 // ============================================
+// State Pill Icon Colors
+// ============================================
+
+.state-icon-idle {
+  color: variables.$ctp-subtext0;
+}
+
+.state-icon-info {
+  color: variables.$ctp-info;
+}
+
+.state-icon-warn {
+  color: variables.$ctp-warning;
+}
+
+.state-icon-error {
+  color: variables.$ctp-error;
+}
+
+// ============================================
 // Battery Pill
 // ============================================
 
