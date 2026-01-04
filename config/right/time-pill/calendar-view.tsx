@@ -42,6 +42,7 @@ function formatTime(dt: GLib.DateTime): string {
  * Format time range for an event
  */
 function formatTimeRange(event: CalendarEvent): string {
+  console.log(`Start time: ${event.start} End time: ${event.end}`);
   if (event.all_day) {
     return "All Day";
   }
@@ -137,7 +138,7 @@ function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
 
   if (event.location) {
     const locationLabel = new Gtk.Label({
-      label: `• ${event.location}`,
+      label: `${event.location}`,
       xalign: 0,
       css_classes: ["event-location"],
       ellipsize: 3, // END

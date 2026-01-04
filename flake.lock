@@ -134,11 +134,11 @@
         "precommit": "precommit"
       },
       "locked": {
-        "lastModified": 1767474098,
-        "narHash": "sha256-bUvag7CePn4on4GYa8FihRgorqWijmxh5998qgNS5Yg=",
+        "lastModified": 1767501917,
+        "narHash": "sha256-Ka+6UtP+Pd+wNPInfdv4WAKAa96CwQJ2pKuMQNpe/CE=",
         "owner": "FredSystems",
         "repo": "fred-cal",
-        "rev": "bd97a7d84865eaaa339ae26f6d64d923e79c0713",
+        "rev": "47581c99be246bf5998233ab73bc87722c0b1764",
         "type": "github"
       },
       "original": {
@@ -289,11 +289,11 @@
     },
     "nixpkgs_4": {
       "locked": {
-        "lastModified": 1767116409,
-        "narHash": "sha256-5vKw92l1GyTnjoLzEagJy5V5mDFck72LiQWZSOnSicw=",
+        "lastModified": 1767379071,
+        "narHash": "sha256-EgE0pxsrW9jp9YFMkHL9JMXxcqi/OoumPJYwf+Okucw=",
         "owner": "nixos",
         "repo": "nixpkgs",
-        "rev": "cad22e7d996aea55ecab064e84834289143e44a0",
+        "rev": "fb7944c166a3b630f177938e478f0378e64ce108",
         "type": "github"
       },
       "original": {
