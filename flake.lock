@@ -134,11 +134,11 @@
         "precommit": "precommit"
       },
       "locked": {
-        "lastModified": 1767501917,
-        "narHash": "sha256-Ka+6UtP+Pd+wNPInfdv4WAKAa96CwQJ2pKuMQNpe/CE=",
+        "lastModified": 1767570270,
+        "narHash": "sha256-UDej10/PA1Nfzq0I2+F7dydHAC3OV94SzgE8qiXPSiE=",
         "owner": "FredSystems",
         "repo": "fred-cal",
-        "rev": "47581c99be246bf5998233ab73bc87722c0b1764",
+        "rev": "4c77885abb87b4ff3e2523a6f4f417a6e2f8d2a8",
         "type": "github"
       },
       "original": {
