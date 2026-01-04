@@ -42,7 +42,6 @@ function formatTime(dt: GLib.DateTime): string {
  * Format time range for an event
  */
 function formatTimeRange(event: CalendarEvent): string {
-  console.log(`Start time: ${event.start} End time: ${event.end}`);
   if (event.all_day) {
     return "All Day";
   }

@@ -36,8 +36,7 @@ export function resolveSystemState(
   states: Array<SystemSignal | null>,
 ): AggregatedSystemState {
   const active: SystemSignal[] = states.filter(
-    (s): s is SystemSignal =>
-      s !== null && (s.severity !== "idle" || s.contextual === true),
+    (s): s is SystemSignal => s !== null,
   );
 
   if (active.length === 0) {
