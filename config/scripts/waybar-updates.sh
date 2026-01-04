@@ -40,7 +40,7 @@ current_branch="$(git symbolic-ref --short HEAD 2>/dev/null || true)"
 
 # Non-main branch is considered dirty
 if [[ -n "$current_branch" && "$current_branch" != "$MAIN_BRANCH" ]]; then
-    json "󰏗" "updates" "On non-main branch: $current_branch"
+    json "" "updates" "On non-main branch: $current_branch"
     exit 0
 fi
 
@@ -48,7 +48,7 @@ fi
 upstream="$(git for-each-ref --format='%(upstream:short)' "$(git symbolic-ref -q HEAD)" 2>/dev/null || true)"
 
 if [[ -z "$upstream" ]]; then
-    json "󰏗" "updates" "No upstream configured for $MAIN_BRANCH"
+    json "" "updates" "No upstream configured for $MAIN_BRANCH"
     exit 0
 fi
 
@@ -60,9 +60,9 @@ behind="$(git rev-list --count HEAD.."$upstream" 2>/dev/null || echo 0)"
 
 if ((behind > 0)); then
     if ((behind == 1)); then
-        json "󰏗" "updates" "Config behind upstream by 1 commit"
+        json "" "updates" "Config behind upstream by 1 commit"
     else
-        json "󰏗" "updates" "Config behind upstream by $behind commits"
+        json "" "updates" "Config behind upstream by $behind commits"
     fi
     exit 0
 fi
