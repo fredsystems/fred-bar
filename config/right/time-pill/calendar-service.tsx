@@ -16,6 +16,7 @@ export interface CalendarEvent {
   end: string;
   calendar_name: string;
   calendar_url: string;
+  calendar_color?: string;
   all_day: boolean;
   rrule?: string;
   status?: string;
