@@ -254,15 +254,14 @@ function parseDateTime(isoString: string): GLib.DateTime | null {
 }
 
 /**
- * Format time for display (e.g., "2:30 PM")
+ * Format time for display in 24-hour format (e.g., "14:30")
  */
 function formatTime(dt: GLib.DateTime): string {
   const hour = dt.get_hour();
   const minute = dt.get_minute();
-  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  const ampm = hour < 12 ? "AM" : "PM";
+  const hourStr = hour.toString().padStart(2, "0");
   const minStr = minute.toString().padStart(2, "0");
-  return `${hour12}:${minStr} ${ampm}`;
+  return `${hourStr}:${minStr}`;
 }
 
 /**
@@ -305,14 +304,7 @@ function createAllDayEventWidget(event: CalendarEvent): Gtk.Box {
     wrap_mode: 2, // WORD_CHAR
   });
 
-  const calendarLabel = new Gtk.Label({
-    label: event.calendar_name,
-    xalign: 0,
-    css_classes: ["event-calendar"],
-  });
-
   box.append(titleLabel);
-  box.append(calendarLabel);
 
   return box;
 }
@@ -321,10 +313,6 @@ function createAllDayEventWidget(event: CalendarEvent): Gtk.Box {
  * Create a timed event widget
  */
 function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
-  console.log(
-    `Creating timed event: ${event.summary}, color: ${event.calendar_color}`,
-  );
-
   const box = new Gtk.Box({
     orientation: Gtk.Orientation.HORIZONTAL,
     spacing: 8,
@@ -364,14 +352,6 @@ function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
     spacing: 4,
   });
 
-  const calendarLabel = new Gtk.Label({
-    label: event.calendar_name,
-    xalign: 0,
-    css_classes: ["event-calendar"],
-  });
-
-  infoBox.append(calendarLabel);
-
   if (event.location) {
     const locationLabel = new Gtk.Label({
       label: `${event.location}`,
@@ -384,7 +364,10 @@ function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
   }
 
   detailsBox.append(titleLabel);
-  detailsBox.append(infoBox);
+
+  if (event.location) {
+    detailsBox.append(infoBox);
+  }
 
   box.append(timeLabel);
   box.append(detailsBox);
@@ -553,6 +536,14 @@ export function CalendarView(): Gtk.Box {
         spacing: 8,
         css_classes: ["calendar-section", "timed-section"],
       });
+
+      const sectionTitle = new Gtk.Label({
+        label: "Agenda",
+        xalign: 0,
+        css_classes: ["section-title"],
+      });
+
+      timedSection.append(sectionTitle);
 
       for (const event of timedEvents) {
         const eventWidget = createTimedEventWidget(event);
