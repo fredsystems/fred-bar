@@ -3,7 +3,7 @@
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 
-const CALENDAR_API_URL = "http://localhost:5090/api/get_today_calendars";
+const CALENDAR_API_BASE_URL = "http://localhost:5090/api";
 const RETRY_INTERVAL_MS = 60000; // 1 minute when API is unavailable
 const UPDATE_INTERVAL_MS = 900000; // 15 minutes when API is available
 
@@ -35,6 +35,7 @@ export class CalendarService {
   private callbacks: Set<CalendarUpdateCallback> = new Set();
   private timeoutId: number | null = null;
   private isApiAvailable = false;
+  private currentDateOffset = 0; // 0 = today, 1 = tomorrow, -1 = yesterday, etc.
 
   constructor() {
     // Start fetching immediately
@@ -64,6 +65,67 @@ export class CalendarService {
   }
 
   /**
+   * Get the current date being viewed
+   */
+  public getCurrentDate(): GLib.DateTime | null {
+    const now = GLib.DateTime.new_now_local();
+    if (!now) return null;
+    if (this.currentDateOffset === 0) {
+      return now;
+    }
+    return now.add_days(this.currentDateOffset);
+  }
+
+  /**
+   * Navigate to a specific day offset from today
+   */
+  public goToDay(offset: number): void {
+    this.currentDateOffset = offset;
+    this.fetchCalendarData();
+  }
+
+  /**
+   * Go to the previous day
+   */
+  public previousDay(): void {
+    this.currentDateOffset--;
+    this.fetchCalendarData();
+  }
+
+  /**
+   * Go to the next day
+   */
+  public nextDay(): void {
+    this.currentDateOffset++;
+    this.fetchCalendarData();
+  }
+
+  /**
+   * Go to today
+   */
+  public goToToday(): void {
+    this.currentDateOffset = 0;
+    this.fetchCalendarData();
+  }
+
+  /**
+   * Get the API URL for the current date offset
+   * Using specific date format (YYYY-MM-DD) instead of relative offsets
+   * because the API's relative date parsing (-1d, +3d) has bugs
+   */
+  private getApiUrl(): string {
+    const currentDate = this.getCurrentDate();
+    if (!currentDate) {
+      // Fallback to today if date calculation fails
+      return `${CALENDAR_API_BASE_URL}/get_date_range/today`;
+    }
+
+    // Format as YYYY-MM-DD for the API
+    const dateStr = currentDate.format("%Y-%m-%d");
+    return `${CALENDAR_API_BASE_URL}/get_date_range/${dateStr}`;
+  }
+
+  /**
    * Fetch calendar data from the API
    */
   private fetchCalendarData(): void {
@@ -75,7 +137,11 @@ export class CalendarService {
 
   private performFetch(): void {
     try {
-      const file = Gio.File.new_for_uri(CALENDAR_API_URL);
+      const currentDate = this.getCurrentDate();
+      const _dateStr = currentDate ? currentDate.format("%Y-%m-%d") : "unknown";
+      const apiUrl = this.getApiUrl();
+
+      const file = Gio.File.new_for_uri(apiUrl);
 
       file.load_contents_async(null, (source, result) => {
         try {
@@ -91,7 +157,6 @@ export class CalendarService {
             const jsonText = decoder.decode(contents);
             const data = JSON.parse(jsonText) as CalendarData;
 
-            // Successfully fetched data
             this.data = data;
             this.isApiAvailable = true;
             this.notifyCallbacks();

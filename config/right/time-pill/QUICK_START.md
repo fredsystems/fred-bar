@@ -2,7 +2,7 @@
 
 ## What You Get
 
-A calendar view integrated into the time-pill popover that displays today's events from `fredcal`.
+A calendar view integrated into the time-pill popover that displays events from `fredcal` with day-by-day navigation.
 
 ## Visual Preview
 
@@ -15,7 +15,7 @@ A calendar view integrated into the time-pill popover that displays today's even
 │            World Clocks                      │
 │  [Clock] [Clock] [Clock]                     │
 ├──────────────────────────────────────────────┤
-│ Today's Events                      5 events │
+│  ←  Today's Events  →  [Today]      5 events │ ← Navigation controls
 ├──────────────────────────────────────────────┤
 │ ALL DAY                                      │
 │ ┌──────────────────────────────────────────┐ │
@@ -48,21 +48,35 @@ A calendar view integrated into the time-pill popover that displays today's even
 
 2. **fred-bar installed** via Home Manager (see main README.md)
 
+## Navigation
+
+- **← button**: Go to previous day
+- **→ button**: Go to next day
+- **Today button**: Jump back to today (only visible when viewing other dates)
+- **Header**: Shows "Today's Events", "Tomorrow's Events", "Yesterday's Events", or specific date like "Monday, January 5"
+
 ## How It Works
 
 1. **On Startup**: Calendar service tries to connect to fredcal
    - If fredcal isn't ready: Shows "Connecting to calendar..." and retries every minute
    - Once connected: Displays events
 
-2. **Updates**:
+2. **Navigation**:
+   - Click ← or → to browse days
+   - Header updates to show the current date
+   - "Today" button appears when viewing past/future dates
+   - Each navigation fetches fresh data for that day
+
+3. **Updates**:
    - Checks for new events every 15 minutes
    - fredcal syncs with CalDAV every 15 minutes
    - Times are aligned, so you see fresh data
 
-3. **Display**:
+4. **Display**:
    - All-day events shown first with purple accent
    - Timed events below, sorted by start time with blue accent
    - Shows: title, time, calendar name, location
+   - Dynamic header changes based on the date being viewed
 
 ## Files Overview
 
@@ -135,26 +149,43 @@ curl http://localhost:5090/api/get_today_calendars | jq
 
 **Solution**: The view has a max height (400px) and scrolls automatically. It will fit to content if there are fewer events.
 
+### Navigation doesn't work
+
+**Problem**: Buttons don't respond or API calls fail
+
+**Solution**:
+
+```bash
+# Make sure fredcal supports the date range API
+curl http://localhost:5090/api/get_date_range/today
+curl http://localhost:5090/api/get_date_range/tomorrow
+curl http://localhost:5090/api/get_date_range/+1d
+curl http://localhost:5090/api/get_date_range/-1d
+```
+
 ### Want to see TODOs too?
 
 **Current limitation**: TODOs are NOT implemented yet. This version only shows calendar events.
 
 **Future enhancement**: Can be added by:
 
-- Fetching from `/api/get_today` instead of `/api/get_today_calendars`
+- Fetching from `/api/get_today` instead of using the date range API
 - Adding TODO section to calendar-view.tsx
 - Styling TODO items differently
 
 ## What's Next?
 
-Current implementation is **view-only**. Potential enhancements:
+Current implementation is **view-only** with day navigation. Potential enhancements:
 
+- [x] Day scrolling navigation
+- [ ] Keyboard shortcuts (j/k for prev/next, t for today)
+- [ ] Week/month view
 - [ ] Click to view event details
 - [ ] Add TODOs display
 - [ ] Create/edit events
-- [ ] Multi-day calendar view
 - [ ] Color-code by calendar source
 - [ ] Notifications for upcoming events
+- [ ] Mini calendar for date jumping
 
 See `CALENDAR_README.md` for the full enhancement wishlist.
 
@@ -166,9 +197,27 @@ See `CALENDAR_README.md` for the full enhancement wishlist.
 4. Read `CALENDAR_README.md` for architecture details
 5. Check `CALENDAR_IMPLEMENTATION.md` for implementation notes
 
-## Example API Response
+## Example API Responses
 
-What fredcal should return:
+### Today
+
+```bash
+curl http://localhost:5090/api/get_date_range/today
+```
+
+### Tomorrow
+
+```bash
+curl http://localhost:5090/api/get_date_range/tomorrow
+```
+
+### 3 days from now
+
+```bash
+curl http://localhost:5090/api/get_date_range/+3d
+```
+
+### Response format
 
 ```json
 {
@@ -192,4 +241,4 @@ What fredcal should return:
 
 ---
 
-**That's it!** Click the time pill, see your calendar. Simple as that.
+**That's it!** Click the time pill, see your calendar, navigate through days. Simple as that.

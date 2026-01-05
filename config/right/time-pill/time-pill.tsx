@@ -2,6 +2,7 @@
 
 import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
+import { Astal } from "ags/gtk4";
 import type Cairo from "cairo";
 import { attachTooltip } from "helpers/tooltip";
 import { CalendarView } from "./calendar-view";
@@ -31,7 +32,7 @@ function nowIn(tzid: string): GLib.DateTime | null {
 export function TimePill(): Gtk.Button {
   let hovered = false;
   let expanded = false;
-  let popoverOpen = false;
+  let windowOpen = false;
 
   /* ───────── Button ───────── */
 
@@ -78,16 +79,21 @@ export function TimePill(): Gtk.Button {
 
   button.set_child(box);
 
-  /* ───────── Popover ───────── */
+  /* ───────── Window ───────── */
 
-  const popover = new Gtk.Popover({
-    has_arrow: false,
-    autohide: true,
-  });
+  const { TOP, RIGHT } = Astal.WindowAnchor;
 
-  popover.set_parent(button);
-  popover.set_position(Gtk.PositionType.BOTTOM);
-  popover.set_halign(Gtk.Align.START);
+  const timeWindow = (
+    <window
+      name="time-pill-calendar"
+      visible={false}
+      anchor={TOP | RIGHT}
+      class="time-window"
+      exclusivity={Astal.Exclusivity.NORMAL}
+      layer={Astal.Layer.OVERLAY}
+      keymode={Astal.Keymode.ON_DEMAND}
+    />
+  ) as unknown as Gtk.Window;
 
   const popRoot = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -96,8 +102,10 @@ export function TimePill(): Gtk.Button {
   });
 
   popRoot.set_hexpand(true);
+  popRoot.set_vexpand(true);
   popRoot.set_halign(Gtk.Align.FILL);
-  popover.set_child(popRoot);
+  popRoot.set_valign(Gtk.Align.FILL);
+  timeWindow.set_child(popRoot);
 
   const title = new Gtk.Label({
     label: "World Clocks",
@@ -267,14 +275,40 @@ export function TimePill(): Gtk.Button {
   });
   popRoot.append(separator);
 
-  // Calendar view
-  const calendarView = CalendarView();
+  // Calendar view - pass window reference for resizing
+  const calendarView = CalendarView(timeWindow);
   popRoot.append(calendarView);
+
+  timeWindow.set_child(popRoot);
+
+  // Handle ESC key to close
+  const keyController = new Gtk.EventControllerKey();
+  keyController.connect("key-pressed", (_ctrl, keyval) => {
+    if (keyval === 65307) {
+      // ESC key
+      timeWindow.visible = false;
+      windowOpen = false;
+      if (hovered) scheduleExpand();
+      else scheduleCollapse();
+      return true;
+    }
+    return false;
+  });
+  timeWindow.add_controller(keyController);
+
+  // Handle visibility changes
+  timeWindow.connect("notify::visible", () => {
+    if (!timeWindow.visible && windowOpen) {
+      windowOpen = false;
+      if (hovered) scheduleExpand();
+      else scheduleCollapse();
+    }
+  });
 
   /* ───────── Helpers ───────── */
 
   function applyExpanded(next: boolean) {
-    if (popoverOpen) return;
+    if (windowOpen) return;
 
     if (expanded === next) return;
     expanded = next;
@@ -335,8 +369,8 @@ export function TimePill(): Gtk.Button {
       longLabel.set_label("");
     }
 
-    // Popover clocks
-    if (popoverOpen) {
+    // Window clocks
+    if (windowOpen) {
       for (const [tzid, area] of clockDrawingAreas.entries()) {
         const dt = nowIn(tzid);
 
@@ -356,11 +390,6 @@ export function TimePill(): Gtk.Button {
     }
   }
 
-  function sizePopoverToMonitorEdge() {
-    // Set a wider width to accommodate calendar view
-    popRoot.set_size_request(450, -1);
-  }
-
   /* ───────── Tick ───────── */
 
   GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
@@ -374,13 +403,13 @@ export function TimePill(): Gtk.Button {
 
   motion.connect("enter", () => {
     hovered = true;
-    if (popoverOpen) return;
+    if (windowOpen) return;
     scheduleExpand();
   });
 
   motion.connect("leave", () => {
     hovered = false;
-    if (popoverOpen) return;
+    if (windowOpen) return;
     scheduleCollapse();
   });
 
@@ -406,7 +435,7 @@ export function TimePill(): Gtk.Button {
       EXPAND_DELAY_MS,
       () => {
         expandTimeoutId = null;
-        if (hovered && !popoverOpen) applyExpanded(true);
+        if (hovered && !windowOpen) applyExpanded(true);
         return GLib.SOURCE_REMOVE;
       },
     );
@@ -421,7 +450,7 @@ export function TimePill(): Gtk.Button {
       COLLAPSE_DELAY_MS,
       () => {
         collapseTimeoutId = null;
-        if (!hovered && !popoverOpen) applyExpanded(false);
+        if (!hovered && !windowOpen) applyExpanded(false);
         return GLib.SOURCE_REMOVE;
       },
     );
@@ -430,31 +459,21 @@ export function TimePill(): Gtk.Button {
   /* ───────── Click ───────── */
 
   button.connect("clicked", () => {
-    if (popoverOpen) {
-      popover.popdown();
+    if (windowOpen) {
+      timeWindow.visible = false;
       return;
     }
 
-    popoverOpen = true;
+    windowOpen = true;
 
-    // Freeze stack state for popover lifetime
+    // Freeze stack state for window lifetime
     applyExpanded(true);
 
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      sizePopoverToMonitorEdge();
-      popover.popup();
+      timeWindow.visible = true;
       updateLabels();
       return GLib.SOURCE_REMOVE;
     });
-  });
-
-  popover.connect("closed", () => {
-    popoverOpen = false;
-
-    if (hovered) scheduleExpand();
-    else scheduleCollapse();
-
-    updateLabels();
   });
 
   updateLabels();

@@ -140,7 +140,7 @@ function findClosestCatppuccinColor(color: string): string {
   const inputHsl = rgbToHsl(inputRgb.r, inputRgb.g, inputRgb.b);
 
   let closestColor = CATPPUCCIN_COLORS.blue;
-  let closestName = "blue";
+  let _closestName = "blue";
   let minDistance = Infinity;
 
   for (const [name, hex] of Object.entries(CATPPUCCIN_COLORS)) {
@@ -153,7 +153,7 @@ function findClosestCatppuccinColor(color: string): string {
     if (distance < minDistance) {
       minDistance = distance;
       closestColor = hex;
-      closestName = name;
+      _closestName = name;
     }
   }
 
@@ -169,9 +169,9 @@ function normalizeColor(color: string): string {
   if (color.startsWith("rgb")) {
     const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
     if (match) {
-      const r = parseInt(match[1]).toString(16).padStart(2, "0");
-      const g = parseInt(match[2]).toString(16).padStart(2, "0");
-      const b = parseInt(match[3]).toString(16).padStart(2, "0");
+      const r = parseInt(match[1], 10).toString(16).padStart(2, "0");
+      const g = parseInt(match[2], 10).toString(16).padStart(2, "0");
+      const b = parseInt(match[3], 10).toString(16).padStart(2, "0");
       return `#${r}${g}${b}`;
     }
   }
@@ -376,9 +376,72 @@ function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
 }
 
 /**
+ * Format date for header display
+ */
+function formatHeaderDate(dt: GLib.DateTime | null, isToday: boolean): string {
+  if (isToday) {
+    return "Today's Events";
+  }
+
+  if (!dt) {
+    return "Events";
+  }
+
+  const now = GLib.DateTime.new_now_local();
+  if (!now) return "Events";
+
+  const today = GLib.DateTime.new_local(
+    now.get_year(),
+    now.get_month(),
+    now.get_day_of_month(),
+    0,
+    0,
+    0,
+  );
+  const targetDate = GLib.DateTime.new_local(
+    dt.get_year(),
+    dt.get_month(),
+    dt.get_day_of_month(),
+    0,
+    0,
+    0,
+  );
+
+  if (!today || !targetDate) return "Events";
+
+  // Check if it's tomorrow
+  const tomorrow = today.add_days(1);
+  if (
+    tomorrow &&
+    targetDate.get_year() === tomorrow.get_year() &&
+    targetDate.get_month() === tomorrow.get_month() &&
+    targetDate.get_day_of_month() === tomorrow.get_day_of_month()
+  ) {
+    return "Tomorrow's Events";
+  }
+
+  // Check if it's yesterday
+  const yesterday = today.add_days(-1);
+  if (
+    yesterday &&
+    targetDate.get_year() === yesterday.get_year() &&
+    targetDate.get_month() === yesterday.get_month() &&
+    targetDate.get_day_of_month() === yesterday.get_day_of_month()
+  ) {
+    return "Yesterday's Events";
+  }
+
+  // Format as "Monday, January 5"
+  const dayName = dt.format("%A");
+  const monthName = dt.format("%B");
+  const day = dt.get_day_of_month();
+  return `${dayName}, ${monthName} ${day}`;
+}
+
+/**
  * Create the calendar view widget
  */
-export function CalendarView(): Gtk.Box {
+export function CalendarView(timeWindow?: Gtk.Window): Gtk.Box {
   const service = getCalendarService();
 
   // Main container
@@ -387,44 +450,84 @@ export function CalendarView(): Gtk.Box {
     spacing: 0,
     css_classes: ["calendar-view"],
     visible: true,
+    vexpand: true,
   });
 
-  // Header
-  const header = new Gtk.Box({
+  // Header with navigation - top row
+  const headerTop = new Gtk.Box({
     orientation: Gtk.Orientation.HORIZONTAL,
     spacing: 8,
     css_classes: ["calendar-header"],
   });
 
+  // Previous day button
+  const prevButton = new Gtk.Button({
+    label: "←",
+    css_classes: ["calendar-nav-button"],
+    focusable: false,
+  });
+
   const headerLabel = new Gtk.Label({
     label: "Today's Events",
-    xalign: 0,
+    xalign: 0.5,
     hexpand: true,
     css_classes: ["calendar-header-title"],
   });
 
+  // Next day button
+  const nextButton = new Gtk.Button({
+    label: "→",
+    css_classes: ["calendar-nav-button"],
+    focusable: false,
+  });
+
+  headerTop.append(prevButton);
+  headerTop.append(headerLabel);
+  headerTop.append(nextButton);
+
+  // Today button and event count in same row using overlay
+  const todayButtonRow = new Gtk.Overlay({
+    css_classes: ["calendar-today-row"],
+    visible: false,
+  });
+
+  // Center box for the button
+  const centerBox = new Gtk.Box({
+    orientation: Gtk.Orientation.HORIZONTAL,
+    halign: Gtk.Align.CENTER,
+    valign: Gtk.Align.CENTER,
+  });
+
+  const todayButton = new Gtk.Button({
+    label: "Jump to Today",
+    css_classes: ["calendar-today-button"],
+    focusable: false,
+  });
+
+  centerBox.append(todayButton);
+  todayButtonRow.set_child(centerBox);
+
+  // Status label overlaid on the right
   const statusLabel = new Gtk.Label({
     label: "",
     xalign: 1,
     css_classes: ["calendar-status"],
+    halign: Gtk.Align.END,
+    valign: Gtk.Align.CENTER,
+    margin_end: 8,
   });
 
-  header.append(headerLabel);
-  header.append(statusLabel);
+  todayButtonRow.add_overlay(statusLabel);
 
   // Scrolled window for events
   const scrolled = new Gtk.ScrolledWindow({
-    vexpand: false,
+    vexpand: true,
     hexpand: true,
     hscrollbar_policy: Gtk.PolicyType.NEVER,
-    vscrollbar_policy: Gtk.PolicyType.AUTOMATIC,
+    vscrollbar_policy: Gtk.PolicyType.NEVER,
     css_classes: ["calendar-scrolled"],
     visible: true,
   });
-
-  scrolled.set_min_content_height(0);
-  scrolled.set_max_content_height(400);
-  scrolled.set_propagate_natural_height(true);
 
   // Events container
   const eventsBox = new Gtk.Box({
@@ -432,16 +535,18 @@ export function CalendarView(): Gtk.Box {
     spacing: 0,
     css_classes: ["calendar-events"],
     visible: true,
+    vexpand: true,
   });
 
   scrolled.set_child(eventsBox);
 
-  container.append(header);
+  container.append(headerTop);
+  container.append(todayButtonRow);
   container.append(scrolled);
 
   // Empty state
   const emptyLabel = new Gtk.Label({
-    label: "No events today",
+    label: "No events",
     css_classes: ["calendar-empty"],
     vexpand: true,
     valign: Gtk.Align.CENTER,
@@ -456,9 +561,39 @@ export function CalendarView(): Gtk.Box {
   });
 
   /**
+   * Update header to reflect current date
+   */
+  function updateHeader(): void {
+    const currentDate = service.getCurrentDate();
+    const now = GLib.DateTime.new_now_local();
+
+    if (!currentDate || !now) {
+      headerLabel.set_label("Events");
+      todayButton.set_visible(false);
+      return;
+    }
+
+    const isToday =
+      currentDate.get_year() === now.get_year() &&
+      currentDate.get_month() === now.get_month() &&
+      currentDate.get_day_of_month() === now.get_day_of_month();
+
+    headerLabel.set_label(formatHeaderDate(currentDate, isToday));
+    todayButton.set_visible(!isToday);
+    // Always show the row to keep status visible
+    todayButtonRow.set_visible(true);
+  }
+
+  /**
    * Update the view with new data
    */
   function updateView(data: CalendarData | null): void {
+    // Update header to reflect current date
+    updateHeader();
+
+    const currentDate = service.getCurrentDate();
+    const _dateStr = currentDate ? currentDate.format("%Y-%m-%d") : "unknown";
+
     // Clear current events
     let child = eventsBox.get_first_child();
     while (child) {
@@ -466,6 +601,11 @@ export function CalendarView(): Gtk.Box {
       eventsBox.remove(child);
       child = next;
     }
+
+    // Force resize to allow shrinking when content is removed
+    eventsBox.set_size_request(-1, -1);
+    scrolled.set_size_request(-1, -1);
+    container.queue_resize();
 
     if (!data) {
       // Show loading state
@@ -556,10 +696,36 @@ export function CalendarView(): Gtk.Box {
     // Update status
     const total = events.length;
     statusLabel.set_label(`${total} event${total !== 1 ? "s" : ""}`);
+
+    // Force window to resize to fit new content
+    if (timeWindow) {
+      GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        timeWindow.set_default_size(-1, -1);
+        timeWindow.queue_resize();
+        container.queue_resize();
+        return GLib.SOURCE_REMOVE;
+      });
+    }
   }
 
   // Subscribe to calendar updates
   const unsubscribe = service.subscribe(updateView);
+
+  // Navigation button handlers
+  prevButton.connect("clicked", () => {
+    service.previousDay();
+  });
+
+  nextButton.connect("clicked", () => {
+    service.nextDay();
+  });
+
+  todayButton.connect("clicked", () => {
+    service.goToToday();
+  });
+
+  // Initial header update
+  updateHeader();
 
   // Cleanup on destroy
   container.connect("destroy", () => {

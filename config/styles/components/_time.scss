@@ -33,6 +33,22 @@
   border: variables.$border-width-normal solid variables.$ctp-overlay1;
   border-radius: variables.$radius-lg;
   box-shadow: variables.$shadow-inset-surface;
+  min-width: 450px;
+}
+
+.time-window {
+  background-color: variables.$ctp-base;
+  transition: none;
+
+  > box {
+    background-color: variables.$ctp-base;
+    border: variables.$border-width-normal solid variables.$ctp-overlay1;
+    border-radius: variables.$radius-lg;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+    padding: 10px variables.$spacing-lg;
+    margin: variables.$spacing-sm;
+    transition: none;
+  }
 }
 
 .time-popover-title {
@@ -90,11 +106,12 @@
   background-color: variables.$ctp-mantle;
   border-radius: variables.$radius-md;
   margin-bottom: variables.$spacing-md;
+  transition: none;
 }
 
 .calendar-header {
   padding: 0;
-  margin-bottom: variables.$spacing-sm;
+  margin-bottom: variables.$spacing-md;
 }
 
 .calendar-header-title {
@@ -103,20 +120,72 @@
   font-size: variables.$font-size-base;
 }
 
-.calendar-status {
-  color: variables.$ctp-overlay2;
+.calendar-nav-button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  background-color: variables.$ctp-surface0;
+  color: variables.$ctp-text;
+  border: variables.$border-width-normal solid variables.$ctp-surface1;
+  border-radius: variables.$radius-sm;
+  font-size: variables.$font-size-lg;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: variables.$ctp-surface1;
+    color: variables.$ctp-mauve;
+    border-color: variables.$ctp-mauve;
+  }
+
+  &:active {
+    background-color: variables.$ctp-surface2;
+  }
+}
+
+.calendar-today-row {
+  margin: variables.$spacing-sm 0 variables.$spacing-md 0;
+  padding: 0;
+  min-height: 32px;
+}
+
+.calendar-today-button {
+  min-height: 32px;
+  padding: variables.$spacing-xs variables.$spacing-md;
+  background-color: variables.$ctp-blue;
+  color: variables.$ctp-base;
+  border: none;
+  border-radius: variables.$radius-sm;
   font-size: variables.$font-size-sm;
-  opacity: variables.$opacity-subtle;
+  font-weight: variables.$font-weight-semibold;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: variables.$ctp-sapphire;
+  }
+
+  &:active {
+    background-color: variables.$ctp-sky;
+  }
+}
+
+.calendar-status {
+  color: variables.$ctp-subtext1;
+  font-size: variables.$font-size-xs;
+  font-style: italic;
+  opacity: 0.7;
 }
 
 .calendar-scrolled {
   background-color: variables.$ctp-base;
   border-radius: variables.$radius-sm;
   border: variables.$border-width-normal solid variables.$ctp-surface0;
+  min-height: 100px;
+  transition: none;
 }
 
 .calendar-events {
   padding: variables.$spacing-sm;
+  transition: none;
 }
 
 .calendar-section {
