@@ -3,6 +3,7 @@ import Gtk from "gi://Gtk?version=4.0";
 import App from "ags/gtk4/app";
 import { attachTooltip } from "helpers/tooltip";
 import { notificationService } from "services/notifications";
+import { getWindowManager } from "services/window-manager";
 import type { AggregatedSystemState } from "./state/helpers/aggregate";
 import type { SystemSignal } from "./state/helpers/normalize";
 import { systemState } from "./state/modules/system";
@@ -34,6 +35,7 @@ function tooltipLineMarkup(s: SystemSignal): string {
 }
 
 export function StatePill(): Gtk.Button {
+  const windowManager = getWindowManager();
   const button = new Gtk.Button({
     css_classes: ["state-pill", "pill", "state-idle"],
   });
@@ -72,27 +74,9 @@ export function StatePill(): Gtk.Button {
       }
     }
 
-    // Toggle sidebar window
+    // Toggle sidebar window using window manager
     const sidebarName = `sidebar-${monitorIndex}`;
-    const anyApp = App as unknown as {
-      get_window?: (name: string) => Gtk.Window | null;
-      getWindow?: (name: string) => Gtk.Window | null;
-    };
-
-    const sidebar =
-      anyApp.get_window?.(sidebarName) ?? anyApp.getWindow?.(sidebarName);
-
-    if (sidebar) {
-      const willBeVisible = !sidebar.visible;
-      sidebar.visible = willBeVisible;
-
-      // Set window size to prevent blocking mouse events when hidden
-      if (willBeVisible) {
-        sidebar.set_default_size(420, -1);
-      } else {
-        sidebar.set_default_size(0, -1);
-      }
-    }
+    windowManager.toggle(sidebarName);
   });
 
   function update(): void {

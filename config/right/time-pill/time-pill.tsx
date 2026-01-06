@@ -5,6 +5,7 @@ import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import type Cairo from "cairo";
 import { attachTooltip } from "helpers/tooltip";
+import { getWindowManager } from "services/window-manager";
 import { CalendarView } from "./calendar-view";
 
 type WorldClock = {
@@ -30,6 +31,7 @@ function nowIn(tzid: string): GLib.DateTime | null {
 }
 
 export function TimePill(): Gtk.Button {
+  const windowManager = getWindowManager();
   let hovered = false;
   let expanded = false;
   let windowOpen = false;
@@ -281,15 +283,20 @@ export function TimePill(): Gtk.Button {
 
   timeWindow.set_child(popRoot);
 
+  // Register with window manager and provide deactivation callback
+  windowManager.register("time-pill-calendar", timeWindow, () => {
+    // When another window opens, collapse the label if window isn't actually open
+    if (!windowOpen && expanded) {
+      applyExpanded(false);
+    }
+  });
+
   // Handle ESC key to close
   const keyController = new Gtk.EventControllerKey();
   keyController.connect("key-pressed", (_ctrl, keyval) => {
     if (keyval === 65307) {
       // ESC key
-      timeWindow.visible = false;
-      windowOpen = false;
-      if (hovered) scheduleExpand();
-      else scheduleCollapse();
+      windowManager.hide("time-pill-calendar");
       return true;
     }
     return false;
@@ -298,8 +305,11 @@ export function TimePill(): Gtk.Button {
 
   // Handle visibility changes
   timeWindow.connect("notify::visible", () => {
-    if (!timeWindow.visible && windowOpen) {
-      windowOpen = false;
+    const wasOpen = windowOpen;
+    windowOpen = timeWindow.visible;
+
+    // Only trigger expand/collapse when transitioning from open to closed
+    if (wasOpen && !timeWindow.visible) {
       if (hovered) scheduleExpand();
       else scheduleCollapse();
     }
@@ -460,17 +470,19 @@ export function TimePill(): Gtk.Button {
 
   button.connect("clicked", () => {
     if (windowOpen) {
-      timeWindow.visible = false;
+      windowOpen = false;
+      windowManager.hide("time-pill-calendar");
       return;
     }
 
+    // Set state before showing to prevent race conditions
     windowOpen = true;
 
     // Freeze stack state for window lifetime
     applyExpanded(true);
 
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      timeWindow.visible = true;
+      windowManager.show("time-pill-calendar");
       updateLabels();
       return GLib.SOURCE_REMOVE;
     });

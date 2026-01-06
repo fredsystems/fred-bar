@@ -1,6 +1,7 @@
 import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import { notificationService } from "services/notifications";
+import { getWindowManager } from "services/window-manager";
 import { ConnectivityToggles } from "./connectivity-toggles";
 import { MediaPlayer } from "./media-player";
 import { NotificationList } from "./notification-list";
@@ -196,10 +197,12 @@ export function SidebarPanel(): Gtk.Box {
 
 export function SidebarWindow(monitorIndex: number): Gtk.Window {
   const { TOP, RIGHT, BOTTOM } = Astal.WindowAnchor;
+  const windowManager = getWindowManager();
+  const windowName = `sidebar-${monitorIndex}`;
 
   const win = (
     <window
-      name={`sidebar-${monitorIndex}`}
+      name={windowName}
       visible={false}
       monitor={monitorIndex}
       anchor={TOP | RIGHT | BOTTOM}
@@ -213,13 +216,15 @@ export function SidebarWindow(monitorIndex: number): Gtk.Window {
     </window>
   ) as unknown as Gtk.Window;
 
+  // Register with window manager
+  windowManager.register(windowName, win);
+
   // Handle ESC key to close
   const keyController = new Gtk.EventControllerKey();
   keyController.connect("key-pressed", (_ctrl, keyval) => {
     if (keyval === 65307) {
       // ESC key
-      win.visible = false;
-      win.set_default_size(0, -1);
+      windowManager.hide(windowName);
       return true;
     }
     return false;
