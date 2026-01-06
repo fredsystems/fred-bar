@@ -102,8 +102,8 @@ export class NiriAdapter implements CompositorAdapter {
 
     // Sort by display index
     return workspaces.sort((a, b) => {
-      const aIdx = parseInt(a.name || "0");
-      const bIdx = parseInt(b.name || "0");
+      const aIdx = parseInt(a.name || "0", 10);
+      const bIdx = parseInt(b.name || "0", 10);
       return aIdx - bIdx;
     });
   }
@@ -177,7 +177,7 @@ export class NiriAdapter implements CompositorAdapter {
           address: String(w.id ?? ""),
           title: w.title ?? "",
           appClass: w.app_id ?? "",
-          workspaceId: w.workspace_id!,
+          workspaceId: w.workspace_id ?? 0,
           hidden: false,
         }));
     } catch (error) {

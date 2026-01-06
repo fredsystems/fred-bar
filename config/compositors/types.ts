@@ -1,5 +1,4 @@
 import type Gio from "gi://Gio";
-import type Gtk from "gi://Gtk?version=4.0";
 
 /**
  * Generic workspace representation

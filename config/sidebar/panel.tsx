@@ -1,5 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
+import { setupBackdrop } from "helpers/backdrop";
 import { notificationService } from "services/notifications";
 import { getWindowManager } from "services/window-manager";
 import { ConnectivityToggles } from "./connectivity-toggles";
@@ -215,6 +216,11 @@ export function SidebarWindow(monitorIndex: number): Gtk.Window {
       <SidebarPanel />
     </window>
   ) as unknown as Gtk.Window;
+
+  // Create backdrop window for click-outside-to-close
+  const _backdrop = setupBackdrop(win, () => {
+    windowManager.hide(windowName);
+  });
 
   // Register with window manager
   windowManager.register(windowName, win);

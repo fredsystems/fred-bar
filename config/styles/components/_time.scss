@@ -51,6 +51,14 @@
   }
 }
 
+.backdrop-window {
+  background-color: rgba(0, 0, 0, 0.01);
+
+  .backdrop-box {
+    background-color: transparent;
+  }
+}
+
 .time-popover-title {
   color: variables.$ctp-mauve;
   font-weight: variables.$font-weight-bold;

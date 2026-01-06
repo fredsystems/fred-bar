@@ -1,4 +1,5 @@
 import GLib from "gi://GLib";
+import type Gtk from "gi://Gtk?version=4.0";
 import { FallbackAdapter } from "./fallback";
 import { HyprlandAdapter } from "./hyprland";
 import { NiriAdapter } from "./niri";
@@ -80,12 +81,6 @@ function createCompositorAdapter(compositorName?: string): CompositorAdapter {
         console.warn("[Compositor] Falling back to fallback adapter");
         return new FallbackAdapter();
       }
-
-    // Add more compositor adapters here as they are implemented
-    // case "sway":
-    //   return new SwayAdapter();
-
-    case "fallback":
     default:
       if (name !== "fallback") {
         console.warn(
@@ -115,7 +110,7 @@ export function getCompositor(compositorName?: string): CompositorAdapter {
  * Get monitor connector name from a GTK widget
  * Returns the monitor's connector name (e.g., "DP-2", "HDMI-A-1")
  */
-export function getMonitorConnectorName(widget: any): string | null {
+export function getMonitorConnectorName(widget: Gtk.Widget): string | null {
   try {
     const display = widget.get_display?.();
     if (!display) return null;

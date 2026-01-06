@@ -1,6 +1,5 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
-import App from "ags/gtk4/app";
 import { attachTooltip } from "helpers/tooltip";
 import { notificationService } from "services/notifications";
 import { getWindowManager } from "services/window-manager";
