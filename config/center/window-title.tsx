@@ -1,7 +1,7 @@
 import Gtk from "gi://Gtk?version=4.0";
 import Pango from "gi://Pango?version=1.0";
 
-import { getCompositor, getMonitorConnectorName } from "compositors";
+import { getCompositor } from "compositors";
 import { resolveAppIcon } from "helpers/icon-resolver";
 
 export function WindowTitle(): Gtk.Box {
@@ -86,14 +86,16 @@ export function WindowTitle(): Gtk.Box {
     }
 
     // Get monitor index from window property
-    const monitorProp = (root as any).monitor;
+    const monitorProp = (root as unknown as { monitor?: number }).monitor;
     if (monitorProp === undefined) {
       console.warn("[WindowTitle] No monitor property on window");
       return;
     }
 
     const monitors = display.get_monitors();
-    const monitor = monitors.get_item(monitorProp) as any;
+    const monitor = monitors.get_item(monitorProp) as unknown as {
+      get_connector?: () => string;
+    } | null;
     if (monitor) {
       monitorName = monitor?.get_connector?.() || null;
       update();

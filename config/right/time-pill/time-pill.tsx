@@ -4,6 +4,7 @@ import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import type Cairo from "cairo";
+import { setupBackdrop } from "helpers/backdrop";
 import { attachTooltip } from "helpers/tooltip";
 import { getWindowManager } from "services/window-manager";
 import { CalendarView } from "./calendar-view";
@@ -282,6 +283,11 @@ export function TimePill(): Gtk.Button {
   popRoot.append(calendarView);
 
   timeWindow.set_child(popRoot);
+
+  // Create backdrop window for click-outside-to-close
+  const _backdrop = setupBackdrop(timeWindow, () => {
+    windowManager.hide("time-pill-calendar");
+  });
 
   // Register with window manager and provide deactivation callback
   windowManager.register("time-pill-calendar", timeWindow, () => {

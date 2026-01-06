@@ -16,11 +16,11 @@ export class FallbackAdapter implements CompositorAdapter {
   readonly supportsWorkspaces = false;
   readonly supportsWindows = false;
 
-  getWorkspaces(monitor?: string): CompositorWorkspace[] {
+  getWorkspaces(_monitor?: string): CompositorWorkspace[] {
     return [];
   }
 
-  getFocusedWorkspace(monitor?: string): CompositorWorkspace | null {
+  getFocusedWorkspace(_monitor?: string): CompositorWorkspace | null {
     return null;
   }
 
