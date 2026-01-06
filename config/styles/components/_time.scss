@@ -243,6 +243,26 @@
   margin-bottom: variables.$spacing-sm;
 }
 
+.past-event {
+  opacity: 0.6;
+
+  .event-title {
+    color: variables.$ctp-subtext0;
+  }
+
+  .event-time {
+    color: variables.$ctp-overlay2;
+  }
+
+  .event-location {
+    color: variables.$ctp-overlay1;
+  }
+
+  &:hover {
+    opacity: 0.75;
+  }
+}
+
 .event-title {
   color: variables.$ctp-text;
   font-weight: variables.$font-weight-semibold;
