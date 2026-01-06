@@ -283,6 +283,27 @@ function formatTimeRange(event: CalendarEvent): string {
 }
 
 /**
+ * Check if a timed event is in the past (end time has passed)
+ */
+function isEventPast(event: CalendarEvent): boolean {
+  if (event.all_day) {
+    return false; // Don't dim all-day events
+  }
+
+  const end = parseDateTime(event.end);
+  if (!end) {
+    return false;
+  }
+
+  const now = GLib.DateTime.new_now_local();
+  if (!now) {
+    return false;
+  }
+
+  return end.compare(now) < 0; // Returns -1 if end is before now
+}
+
+/**
  * Create an all-day event widget
  */
 function createAllDayEventWidget(event: CalendarEvent): Gtk.Box {
@@ -313,10 +334,17 @@ function createAllDayEventWidget(event: CalendarEvent): Gtk.Box {
  * Create a timed event widget
  */
 function createTimedEventWidget(event: CalendarEvent): Gtk.Box {
+  const cssClasses = ["calendar-event", "timed-event"];
+
+  // Add past-event class if the event has ended
+  if (isEventPast(event)) {
+    cssClasses.push("past-event");
+  }
+
   const box = new Gtk.Box({
     orientation: Gtk.Orientation.HORIZONTAL,
     spacing: 8,
-    css_classes: ["calendar-event", "timed-event"],
+    css_classes: cssClasses,
     hexpand: true,
   });
 
