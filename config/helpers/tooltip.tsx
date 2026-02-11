@@ -15,6 +15,15 @@ export function attachTooltip(anchor: Gtk.Widget, opts: TooltipOptions): void {
   let currentLabel: Gtk.Label | null = null;
   let updateTimeoutId: number | null = null;
 
+  // Helper to clean up the update timeout
+  const cleanupTimeout = () => {
+    if (updateTimeoutId !== null) {
+      GLib.source_remove(updateTimeoutId);
+      updateTimeoutId = null;
+    }
+    currentLabel = null;
+  };
+
   // FIXME: Cache because we have to regenerate this a fair bit on mouse move
   const handlerId = anchor.connect(
     "query-tooltip",
@@ -27,6 +36,8 @@ export function attachTooltip(anchor: Gtk.Widget, opts: TooltipOptions): void {
     ) => {
       const text = opts.text();
       if (!text || text.length === 0) {
+        // Clean up timeout if tooltip won't be shown
+        cleanupTimeout();
         return false;
       }
 
@@ -94,23 +105,23 @@ export function attachTooltip(anchor: Gtk.Widget, opts: TooltipOptions): void {
 
   // Listen for when tooltip is hidden to clean up timer
   const motionController = new Gtk.EventControllerMotion();
-  motionController.connect("leave", () => {
-    if (updateTimeoutId !== null) {
-      GLib.source_remove(updateTimeoutId);
-      updateTimeoutId = null;
-    }
-    currentLabel = null;
-  });
+  motionController.connect("leave", cleanupTimeout);
   anchor.add_controller(motionController);
+
+  // Also listen for notify::has-tooltip changes (when tooltip is programmatically hidden)
+  const tooltipNotifyHandler = anchor.connect("notify::has-tooltip", () => {
+    if (!anchor.has_tooltip) {
+      cleanupTimeout();
+    }
+  });
 
   // Cleanup chaining
   (anchor as CleanupWidget)._cleanup = (() => {
     const prev = (anchor as CleanupWidget)._cleanup;
     return () => {
-      if (updateTimeoutId !== null) {
-        GLib.source_remove(updateTimeoutId);
-      }
+      cleanupTimeout();
       anchor.disconnect(handlerId);
+      anchor.disconnect(tooltipNotifyHandler);
       prev?.();
     };
   })();

@@ -284,7 +284,12 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
 
     if (metadataVariant && typeof metadataVariant.lookup_value === "function") {
       // Try to lookup the mpris:length key from the variant
-      const lengthVariant = metadataVariant.lookup_value("mpris:length", null);
+      const lengthVariant = metadataVariant.lookup_value(
+        "mpris:length",
+        null,
+      ) as {
+        get_int64?: () => number;
+      } | null;
       if (lengthVariant && typeof lengthVariant.get_int64 === "function") {
         // Length is in microseconds, convert to seconds
         length = lengthVariant.get_int64() / 1000000;

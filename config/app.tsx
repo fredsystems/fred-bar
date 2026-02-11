@@ -17,10 +17,37 @@ import scss from "./styles/style.scss";
 
 App.reset_css();
 
+/**
+ * Recursively calls _cleanup on a widget and all its children
+ * This ensures timeouts, signal handlers, and other resources are properly released
+ */
+function recursiveCleanup(widget: Gtk.Widget | null): void {
+  if (!widget) return;
+
+  const cleanupWidget = widget as Gtk.Widget & { _cleanup?: () => void };
+
+  // Call cleanup on this widget if it has one
+  if (typeof cleanupWidget._cleanup === "function") {
+    try {
+      cleanupWidget._cleanup();
+    } catch (e) {
+      console.error("Error during widget cleanup:", e);
+    }
+  }
+
+  // Recursively clean up children
+  let child = widget.get_first_child();
+  while (child) {
+    const next = child.get_next_sibling();
+    recursiveCleanup(child);
+    child = next;
+  }
+}
+
 function Bar(monitorIndex: number): Gtk.Window {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
-  return (
+  const window = (
     <window
       name={`fredbar-${monitorIndex}`}
       visible
@@ -52,6 +79,13 @@ function Bar(monitorIndex: number): Gtk.Window {
       </centerbox>
     </window>
   ) as unknown as Gtk.Window;
+
+  // Ensure all widget cleanup methods are called when window is destroyed
+  window.connect("destroy", () => {
+    recursiveCleanup(window.get_child());
+  });
+
+  return window;
 }
 
 /** AGS API compatibility shim */
@@ -105,12 +139,20 @@ App.start({
 
         if (!sidebarsByIndex.has(i)) {
           const sidebar = SidebarWindow(i);
+          // Ensure cleanup on destroy
+          sidebar.connect("destroy", () => {
+            recursiveCleanup(sidebar.get_child());
+          });
           sidebarsByIndex.set(i, sidebar);
           appAddWindow(sidebar);
         }
 
         if (!popupsByIndex.has(i)) {
           const popup = PopupNotificationWindow(i);
+          // Ensure cleanup on destroy
+          popup.connect("destroy", () => {
+            recursiveCleanup(popup.get_child());
+          });
           popupsByIndex.set(i, popup);
           appAddWindow(popup);
         }

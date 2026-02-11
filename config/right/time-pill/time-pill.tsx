@@ -408,7 +408,7 @@ export function TimePill(): Gtk.Button {
 
   /* ───────── Tick ───────── */
 
-  GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+  const tickTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
     updateLabels();
     return GLib.SOURCE_CONTINUE;
   });
@@ -495,5 +495,14 @@ export function TimePill(): Gtk.Button {
   });
 
   updateLabels();
+
+  /* ───────── Cleanup ───────── */
+
+  (button as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+    if (expandTimeoutId !== null) GLib.source_remove(expandTimeoutId);
+    if (collapseTimeoutId !== null) GLib.source_remove(collapseTimeoutId);
+    if (tickTimeoutId !== null) GLib.source_remove(tickTimeoutId);
+  };
+
   return button;
 }
