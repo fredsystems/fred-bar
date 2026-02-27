@@ -391,13 +391,26 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   const shuffleHandler = player.connect("notify::shuffle", updateControls);
   const loopHandler = player.connect("notify::loop-status", updateControls);
 
-  // Position polling (since position updates might not trigger notify)
-  const pollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-    if (player.playback_status === Mpris.PlaybackStatus.PLAYING) {
-      updatePosition();
-    }
-    return true; // Continue polling
-  });
+  // Position polling (since position updates might not trigger notify).
+  // Uses self-scheduling (SOURCE_REMOVE + manual reschedule) rather than
+  // SOURCE_CONTINUE / return true to avoid the GLib "catch-up cascade" after
+  // system sleep: a repeating timer reschedules from its *last* fire time, so
+  // after a long sleep GLib would rapid-fire many callbacks before the event
+  // loop can handle any input. With SOURCE_REMOVE we always reschedule from now.
+  let positionPollId: number | null = null;
+
+  const schedulePositionPoll = () => {
+    positionPollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+      positionPollId = null;
+      if (player.playback_status === Mpris.PlaybackStatus.PLAYING) {
+        updatePosition();
+      }
+      schedulePositionPoll();
+      return GLib.SOURCE_REMOVE;
+    });
+  };
+
+  schedulePositionPoll();
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
@@ -408,7 +421,10 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
     player.disconnect(statusHandler);
     player.disconnect(shuffleHandler);
     player.disconnect(loopHandler);
-    GLib.source_remove(pollInterval);
+    if (positionPollId !== null) {
+      GLib.source_remove(positionPollId);
+      positionPollId = null;
+    }
   };
 
   return container;
@@ -462,26 +478,38 @@ export function MediaPlayer(): Gtk.Box {
   const addHandler = mpris.connect("player-added", update);
   const removeHandler = mpris.connect("player-closed", update);
 
-  // Poll for active player changes (when switching between existing players)
-  const pollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
-    const players = mpris.get_players();
-    if (players.length > 1) {
-      // Multiple players - check if active one changed
-      const activePlayer = players.find(
-        (p) => p.playback_status === Mpris.PlaybackStatus.PLAYING,
-      );
-      if (activePlayer) {
-        update(); // Rebuild widget for new active player
+  // Poll for active player changes (when switching between existing players).
+  // Self-scheduling to avoid the GLib "catch-up cascade" after system sleep.
+  let playerSwitchPollId: number | null = null;
+
+  const schedulePlayerSwitchPoll = () => {
+    playerSwitchPollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+      playerSwitchPollId = null;
+      const players = mpris.get_players();
+      if (players.length > 1) {
+        // Multiple players - check if active one changed
+        const activePlayer = players.find(
+          (p) => p.playback_status === Mpris.PlaybackStatus.PLAYING,
+        );
+        if (activePlayer) {
+          update(); // Rebuild widget for new active player
+        }
       }
-    }
-    return true;
-  });
+      schedulePlayerSwitchPoll();
+      return GLib.SOURCE_REMOVE;
+    });
+  };
+
+  schedulePlayerSwitchPoll();
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     mpris.disconnect(addHandler);
     mpris.disconnect(removeHandler);
-    GLib.source_remove(pollInterval);
+    if (playerSwitchPollId !== null) {
+      GLib.source_remove(playerSwitchPollId);
+      playerSwitchPollId = null;
+    }
 
     // Cleanup player widgets
     let child = playerContainer.get_first_child();

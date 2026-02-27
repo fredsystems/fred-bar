@@ -408,10 +408,37 @@ export function TimePill(): Gtk.Button {
 
   /* ───────── Tick ───────── */
 
-  const tickTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-    updateLabels();
-    return GLib.SOURCE_CONTINUE;
-  });
+  // Self-scheduling timer aligned to the next wall-clock second boundary.
+  // Using SOURCE_REMOVE + manual reschedule (instead of SOURCE_CONTINUE) prevents
+  // the GLib "catch-up cascade" after system sleep: a SOURCE_CONTINUE timer
+  // reschedules from its *last* fire time, so after a 40-minute sleep GLib would
+  // rapid-fire ~2400 callbacks before the event loop can handle any input.
+  // With SOURCE_REMOVE we reschedule from *now*, so only one callback fires on
+  // wake-up and the timer re-aligns to the next second boundary immediately.
+  let tickTimeoutId: number | null = null;
+
+  function scheduleNextTick(): void {
+    // GLib.get_real_time() returns wall-clock microseconds (unaffected by suspend
+    // adjustments — it's always current real time). Align to the next 1-second
+    // boundary so the display ticks cleanly on the second.
+    const nowUs = GLib.get_real_time();
+    const msIntoCurrentSecond = Math.floor(nowUs / 1000) % 1000;
+    const msUntilNextSecond =
+      msIntoCurrentSecond === 0 ? 1000 : 1000 - msIntoCurrentSecond;
+
+    tickTimeoutId = GLib.timeout_add(
+      GLib.PRIORITY_DEFAULT,
+      msUntilNextSecond,
+      () => {
+        tickTimeoutId = null;
+        updateLabels();
+        scheduleNextTick();
+        return GLib.SOURCE_REMOVE;
+      },
+    );
+  }
+
+  scheduleNextTick();
 
   /* ───────── Hover ───────── */
 
@@ -501,7 +528,10 @@ export function TimePill(): Gtk.Button {
   (button as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     if (expandTimeoutId !== null) GLib.source_remove(expandTimeoutId);
     if (collapseTimeoutId !== null) GLib.source_remove(collapseTimeoutId);
-    if (tickTimeoutId !== null) GLib.source_remove(tickTimeoutId);
+    if (tickTimeoutId !== null) {
+      GLib.source_remove(tickTimeoutId);
+      tickTimeoutId = null;
+    }
   };
 
   return button;

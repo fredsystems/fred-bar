@@ -299,11 +299,24 @@ export function ConnectivityToggles(): Gtk.Box {
 
   const wiredHandler = network.wired?.connect("notify::state", updateEthernet);
 
-  // VPN monitoring via polling (since AstalNetwork doesn't expose VPN)
-  const vpnPollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
-    updateVpn();
-    return true; // Continue polling
-  });
+  // VPN monitoring via polling (since AstalNetwork doesn't expose VPN).
+  // Uses self-scheduling (SOURCE_REMOVE + manual reschedule) rather than
+  // return true to avoid the GLib "catch-up cascade" after system sleep:
+  // a repeating timer reschedules from its *last* fire time, so after a long
+  // sleep GLib would rapid-fire many callbacks before the event loop can handle
+  // any input. With SOURCE_REMOVE we always reschedule from now.
+  let vpnPollId: number | null = null;
+
+  const scheduleVpnPoll = () => {
+    vpnPollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
+      vpnPollId = null;
+      updateVpn();
+      scheduleVpnPoll();
+      return GLib.SOURCE_REMOVE;
+    });
+  };
+
+  scheduleVpnPoll();
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
@@ -325,8 +338,9 @@ export function ConnectivityToggles(): Gtk.Box {
     if (wiredHandler && network.wired) {
       network.wired.disconnect(wiredHandler);
     }
-    if (vpnPollInterval) {
-      GLib.source_remove(vpnPollInterval);
+    if (vpnPollId !== null) {
+      GLib.source_remove(vpnPollId);
+      vpnPollId = null;
     }
   };
 

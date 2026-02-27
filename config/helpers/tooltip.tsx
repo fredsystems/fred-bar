@@ -78,25 +78,34 @@ export function attachTooltip(anchor: Gtk.Widget, opts: TooltipOptions): void {
       frame.set_child(body);
       tooltip.set_custom(frame);
 
-      // Set up live updating if interval is specified
+      // Set up live updating if interval is specified.
+      // Uses self-scheduling (SOURCE_REMOVE + manual reschedule) rather than
+      // SOURCE_CONTINUE to avoid the GLib "catch-up cascade" after system sleep:
+      // a SOURCE_CONTINUE timer reschedules from its *last* fire time, so after
+      // a long sleep GLib would rapid-fire many callbacks before the event loop
+      // can handle any input. With SOURCE_REMOVE we always reschedule from *now*.
       if (opts.updateInterval && opts.updateInterval > 0) {
         if (updateTimeoutId !== null) {
           GLib.source_remove(updateTimeoutId);
         }
 
-        updateTimeoutId = GLib.timeout_add(
-          GLib.PRIORITY_DEFAULT,
-          opts.updateInterval,
-          () => {
-            if (currentLabel) {
-              const newText = opts.text();
-              currentLabel.set_label(newText);
-              return GLib.SOURCE_CONTINUE;
-            }
-            updateTimeoutId = null;
-            return GLib.SOURCE_REMOVE;
-          },
-        );
+        const scheduleTooltipUpdate = () => {
+          updateTimeoutId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            opts.updateInterval!,
+            () => {
+              updateTimeoutId = null;
+              if (currentLabel) {
+                const newText = opts.text();
+                currentLabel.set_label(newText);
+                scheduleTooltipUpdate();
+              }
+              return GLib.SOURCE_REMOVE;
+            },
+          );
+        };
+
+        scheduleTooltipUpdate();
       }
 
       return true;
