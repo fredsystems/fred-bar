@@ -16,6 +16,11 @@
       url = "github:FredSystems/fred-cal";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    hyprshutdown = {
+      url = "github:hyprwm/hyprshutdown";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -26,6 +31,7 @@
       ags,
       astal,
       fredcal,
+      hyprshutdown,
       ...
     }:
     let
@@ -55,6 +61,7 @@
           ddcutil
           rwedid
           fredcal.packages.${system}.default
+          hyprshutdown.packages.${system}.hyprshutdown
         ];
     in
     {

@@ -47,20 +47,28 @@ function detectCompositor(): "hyprland" | "niri" | "sway" | "other" {
   return "other";
 }
 
-function getLogoutCommand(): string {
+function getCompositorExitCommand(): string | null {
   const compositor = detectCompositor();
 
   switch (compositor) {
     case "hyprland":
-      return "hyprctl dispatch exit";
+      return "hyprshutdown";
     case "niri":
       return "niri msg action quit";
     case "sway":
       return "swaymsg exit";
     default:
-      // Fallback to generic logout commands
-      return "loginctl terminate-user $USER";
+      return null;
   }
+}
+
+function getLogoutCommand(): string {
+  return getCompositorExitCommand() ?? "loginctl terminate-user $USER";
+}
+
+function withCompositorExit(systemCommand: string): string {
+  const exitCmd = getCompositorExitCommand();
+  return exitCmd ? `sh -c '${exitCmd} && ${systemCommand}'` : systemCommand;
 }
 
 function executeCommand(command: string): void {
@@ -132,7 +140,7 @@ export function SystemActions(): Gtk.Box {
   rebootBox.append(rebootLabel);
   rebootBtn.set_child(rebootBox);
   rebootBtn.connect("clicked", () => {
-    executeCommand("systemctl reboot");
+    executeCommand(withCompositorExit("systemctl reboot"));
   });
   powerRow.append(rebootBtn);
 
@@ -157,7 +165,7 @@ export function SystemActions(): Gtk.Box {
   shutdownBox.append(shutdownLabel);
   shutdownBtn.set_child(shutdownBox);
   shutdownBtn.connect("clicked", () => {
-    executeCommand("systemctl poweroff");
+    executeCommand(withCompositorExit("systemctl poweroff"));
   });
   powerRow.append(shutdownBtn);
 
