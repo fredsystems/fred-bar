@@ -52,7 +52,7 @@ function getCompositorExitCommand(): string | null {
 
   switch (compositor) {
     case "hyprland":
-      return "hyprshutdown";
+      return "setsid hyprshutdown";
     case "niri":
       return "niri msg action quit";
     case "sway":

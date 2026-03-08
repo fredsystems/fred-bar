@@ -4,6 +4,7 @@
   pkgs,
   fredbarPkg,
   fredcalPkg,
+  fredbarAgsPkg,
   ...
 }:
 
@@ -59,6 +60,10 @@ in
 
     programs.ags = {
       enable = true;
+
+      # Use the patched AGS package with corrected vendorHash.
+      # See https://github.com/Aylur/ags/issues/797
+      package = fredbarAgsPkg;
 
       # FredBar AGS config
       configDir = "${fredbarPkg}/share/fredbar/config";

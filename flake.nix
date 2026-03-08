@@ -38,6 +38,15 @@
       systems = precommit.lib.supportedSystems;
       inherit (nixpkgs) lib;
 
+      # Upstream AGS has a stale vendorHash in nix/default.nix that doesn't
+      # match the actual Go module content. Override it with the correct hash
+      # until https://github.com/Aylur/ags/issues/797 is fixed upstream.
+      patchedAgs =
+        system:
+        ags.packages.${system}.default.overrideAttrs (_: {
+          vendorHash = "sha256-yToSf/UFZhYpZKNf2Ocu8X1GH2NMzIwlg4GUvCNqoVM=";
+        });
+
       fredbarAstalPackages = system: [
         astal.packages.${system}.hyprland
         astal.packages.${system}.tray
@@ -100,6 +109,7 @@
             _module.args = {
               fredbarPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.fredbar;
               fredcalPkg = fredcal.packages.${pkgs.stdenv.hostPlatform.system}.default;
+              fredbarAgsPkg = patchedAgs pkgs.stdenv.hostPlatform.system;
 
               inherit (self.lib) fredbarAstalPackages fredbarRuntimePackages;
             };
@@ -144,7 +154,7 @@
                 typos
                 nixfmt
                 nodePackages.markdownlint-cli2
-                (ags.packages.${system}.default.override {
+                ((patchedAgs system).override {
                   extraPackages = self.lib.fredbarAstalPackages system;
                 })
               ]);
