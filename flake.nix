@@ -153,7 +153,7 @@
                 codespell
                 typos
                 nixfmt
-                nodePackages.markdownlint-cli2
+                markdownlint-cli2
                 ((patchedAgs system).override {
                   extraPackages = self.lib.fredbarAstalPackages system;
                 })
