@@ -342,11 +342,11 @@
         "systems": "systems_2"
       },
       "locked": {
-        "lastModified": 1772475772,
-        "narHash": "sha256-FKsudGNeojcp/mXj6HfCTNL8k5TBkJ30bbOhZ1qE7Kc=",
+        "lastModified": 1777392587,
+        "narHash": "sha256-pJhNBGIBmviw8C4SQtIhGGlVlJYANAm3VRazncZKq5Q=",
         "owner": "hyprwm",
         "repo": "hyprshutdown",
-        "rev": "faec8501cadafb705a8c19dd57a092f610223569",
+        "rev": "f70097e670adddb5a02fb0994804532d6b483b72",
         "type": "github"
       },
       "original": {
