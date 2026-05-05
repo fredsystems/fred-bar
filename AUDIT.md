@@ -16,7 +16,7 @@ User-facing summary of the two most-felt symptoms today:
 
 ## 1. Correctness bugs
 
-### `[ ] C-1.1` Notifications: missing freedesktop hint handling
+### `[x] C-1.1` Notifications: missing freedesktop hint handling
 
 **File:** `config/services/notifications.tsx:36-62`
 
@@ -56,7 +56,7 @@ appear in the popup only and never enter the persistent history.
 
 ---
 
-### `[ ] C-1.2` Window titles go stale
+### `[x] C-1.2` Window titles go stale
 
 **Files:** `config/compositors/hyprland.ts:120-124`,
 `config/compositors/niri.ts:283-321`,
