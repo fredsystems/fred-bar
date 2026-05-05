@@ -113,13 +113,14 @@ export function attachTooltip(anchor: Gtk.Widget, opts: TooltipOptions): void {
       // a SOURCE_CONTINUE timer reschedules from its *last* fire time, so after
       // a long sleep GLib would rapid-fire many callbacks before the event loop
       // can handle any input. With SOURCE_REMOVE we always reschedule from *now*.
-      if (opts.updateInterval && opts.updateInterval > 0) {
+      const interval = opts.updateInterval;
+      if (interval && interval > 0) {
         cleanupTimeout();
 
         const scheduleTooltipUpdate = () => {
           updateTimeoutId = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT,
-            opts.updateInterval!,
+            interval,
             () => {
               updateTimeoutId = null;
               if (cachedLabel) {

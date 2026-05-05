@@ -138,7 +138,7 @@ export class NiriAdapter implements CompositorAdapter {
       (ws) => ws.output === monitor && ws.is_active,
     );
 
-    if (!activeWorkspace || !activeWorkspace.active_window_id) {
+    if (!activeWorkspace?.active_window_id) {
       return null;
     }
 

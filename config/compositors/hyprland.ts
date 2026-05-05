@@ -60,7 +60,7 @@ export class HyprlandAdapter implements CompositorAdapter {
 
   getFocusedWindow(): CompositorWindow | null {
     const client = this.hypr.focused_client;
-    if (!client || !client.workspace) return null;
+    if (!client?.workspace) return null;
 
     return {
       address: client.address ?? "",
