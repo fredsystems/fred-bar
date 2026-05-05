@@ -92,6 +92,18 @@ export class HyprlandAdapter implements CompositorAdapter {
 
   connect(handlers: CompositorEventHandlers): () => void {
     const connections: number[] = [];
+    // Per-Client title listener bookkeeping. The Hyprland manager does not
+    // emit any signal for in-window title changes; those live on the focused
+    // Client object. We rebind notify::title on each focus change.
+    let trackedClient: Hyprland.Client | null = null;
+    let trackedTitleId: number | null = null;
+    const detachClientListener = (): void => {
+      if (trackedClient && trackedTitleId !== null) {
+        trackedClient.disconnect(trackedTitleId);
+      }
+      trackedClient = null;
+      trackedTitleId = null;
+    };
 
     if (handlers.onWorkspacesChanged) {
       const id = this.hypr.connect(
@@ -110,18 +122,22 @@ export class HyprlandAdapter implements CompositorAdapter {
     }
 
     if (handlers.onFocusedWindowChanged) {
-      const id = this.hypr.connect(
-        "notify::focused-client",
-        handlers.onFocusedWindowChanged,
-      );
+      const fire = handlers.onFocusedWindowChanged;
+      const id = this.hypr.connect("notify::focused-client", () => fire());
       connections.push(id);
 
-      // Also listen for title changes
-      const titleId = this.hypr.connect(
-        "notify::focused-title",
-        handlers.onFocusedWindowChanged,
-      );
-      connections.push(titleId);
+      const rewireTitleListener = (): void => {
+        detachClientListener();
+        trackedClient = this.hypr.focused_client ?? null;
+        trackedTitleId =
+          trackedClient?.connect("notify::title", () => fire()) ?? null;
+      };
+
+      rewireTitleListener();
+      const rewireId = this.hypr.connect("notify::focused-client", () => {
+        rewireTitleListener();
+      });
+      connections.push(rewireId);
     }
 
     if (handlers.onWindowAdded) {
@@ -144,6 +160,7 @@ export class HyprlandAdapter implements CompositorAdapter {
       for (const id of connections) {
         this.hypr.disconnect(id);
       }
+      detachClientListener();
     };
   }
 }

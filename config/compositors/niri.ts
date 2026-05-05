@@ -300,6 +300,12 @@ export class NiriAdapter implements CompositorAdapter {
 
         // Check for active window changes PER MONITOR
         const allWorkspaces = this.getAllWorkspacesJson();
+        // Track focused window's title alongside the per-monitor active id so
+        // in-window title changes (browser tab swap, terminal cwd update) also
+        // propagate. Without this, lastActiveWindowsPerMonitor only changes on
+        // window swap and the bar's title widget goes stale.
+        // C-2.5 will replace this poll with the niri event-stream.
+        const focusedTitle = this.getFocusedWindow()?.title ?? "";
         const activeWindowsPerMonitor = allWorkspaces
           .filter((ws) => ws.is_active)
           .map((ws) => ({
@@ -307,9 +313,10 @@ export class NiriAdapter implements CompositorAdapter {
             windowId: ws.active_window_id,
           }))
           .sort((a, b) => a.output.localeCompare(b.output)); // Sort for stable comparison
-        const currentActiveWindowsPerMonitor = JSON.stringify(
-          activeWindowsPerMonitor,
-        );
+        const currentActiveWindowsPerMonitor = JSON.stringify({
+          monitors: activeWindowsPerMonitor,
+          focusedTitle,
+        });
 
         if (currentActiveWindowsPerMonitor !== lastActiveWindowsPerMonitor) {
           lastActiveWindowsPerMonitor = currentActiveWindowsPerMonitor;
