@@ -35,7 +35,14 @@ function ensurePopover(button: TrayButton, item: TrayItem): Gtk.Popover | null {
     popover.set_parent(button);
     popover.set_has_arrow(false);
     popover.set_autohide(true);
-    popover.set_position(Gtk.PositionType.LEFT);
+    // Drop the menu downward from the bar, matching every other GTK status
+    // tray. The previous PositionType.LEFT meant the popover was anchored
+    // to the *left* of the button — which on a top bar with the tray on
+    // the left of the screen pushes the menu off-screen and gets clipped
+    // by the monitor edge. BOTTOM is the natural reading direction and
+    // GTK auto-flips horizontally if the menu would overflow the right
+    // edge, so it works for tray icons placed anywhere along the bar.
+    popover.set_position(Gtk.PositionType.BOTTOM);
     popover.add_css_class("tray-menu");
 
     // Register action group with multiple prefixes to support different tray items

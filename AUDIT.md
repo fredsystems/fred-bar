@@ -266,6 +266,27 @@ don't survive widget cleanup robustly. The rest of the codebase uses
 
 ---
 
+### `[x] C-1.14` Tray dropdown menu clipped on the left
+
+**File:** `config/left/sys-tray/tray-item.tsx:38`,
+`config/styles/components/_tray.scss:35-36`
+
+`ensurePopover()` called `popover.set_position(Gtk.PositionType.LEFT)`,
+which anchors the popover to the **left side of** the tray button — on
+a top bar with the tray on the left edge of the screen the menu opens
+off-screen and the monitor edge clips it. Layered on top of that, the
+`.tray-menu` SCSS rule applied `margin-left: -32px`, shoving the menu
+another 32 px further left.
+
+**Fix (applied):** anchor `Gtk.PositionType.BOTTOM` so the menu drops
+straight down from the bar (matching every other GTK status tray) and
+remove the `margin-left: -32px` / `margin-top: 32px` workarounds. GTK 4
+auto-flips a BOTTOM popover horizontally when it would overflow the
+monitor's right edge, so this works regardless of where along the bar
+a given tray icon sits.
+
+---
+
 ## 2. Memory / performance
 
 ### `[x] C-2.1` `systemState` 250 ms churn
