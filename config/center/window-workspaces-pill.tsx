@@ -1,3 +1,4 @@
+import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 import { getCompositor } from "compositors";
 import { ActiveWorkspace } from "./active-workspace";
@@ -43,14 +44,44 @@ export function WindowWorkspacesPill(): Gtk.Box {
   if (supportsWorkspaces) {
     const motion = new Gtk.EventControllerMotion();
 
+    /* ----------------------------------------------------------------
+     * Hover-state debounce
+     * ----------------------------------------------------------------
+     * The pill is `halign: CENTER`, so when the revealer expands it
+     * widens the box symmetrically — its left edge slides left during
+     * the 180ms slide animation. If the cursor sits in the few pixels
+     * between the outer pill border and the inner workspace pill, the
+     * relayout can briefly move the box's allocated bounds out from
+     * under the cursor, firing `leave`. That collapses the revealer,
+     * which moves the box right again, putting the cursor back inside,
+     * which re-fires `enter` — an oscillation feedback loop.
+     *
+     * Fix: treat `leave` as tentative. Schedule the actual collapse
+     * 80ms later; if `enter` arrives before then, cancel the collapse.
+     * (See AUDIT C-1.11 for the related popover hover bug.)
+     * -------------------------------------------------------------- */
+    let collapseTimer: number | null = null;
+    const cancelCollapse = () => {
+      if (collapseTimer !== null) {
+        GLib.source_remove(collapseTimer);
+        collapseTimer = null;
+      }
+    };
+
     motion.connect("enter", () => {
+      cancelCollapse();
       activeWs.set_visible(false);
       revealer.set_reveal_child(true);
     });
 
     motion.connect("leave", () => {
-      revealer.set_reveal_child(false);
-      activeWs.set_visible(true);
+      cancelCollapse();
+      collapseTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
+        collapseTimer = null;
+        revealer.set_reveal_child(false);
+        activeWs.set_visible(true);
+        return GLib.SOURCE_REMOVE;
+      });
     });
 
     box.add_controller(motion);
