@@ -173,7 +173,7 @@ Same synchronous `nmcli` shelling pattern. Two files
 
 ---
 
-### `[ ] C-1.7` Sliders: `getDDCMonitors()` blocks on first sidebar open
+### `[x] C-1.7` Sliders: `getDDCMonitors()` blocks on first sidebar open
 
 **File:** `config/sidebar/sliders.tsx:51-125, :681-687`
 
@@ -187,7 +187,7 @@ listener-set so widgets refresh.
 
 ---
 
-### `[ ] C-1.8` Brightness slider: initial DDC fetch fires twice
+### `[x] C-1.8` Brightness slider: initial DDC fetch fires twice
 
 **File:** `config/sidebar/sliders.tsx:397-424`
 
