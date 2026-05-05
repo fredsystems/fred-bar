@@ -247,16 +247,14 @@ other.
 
 ---
 
-### `[ ] C-1.13` Mixed timer APIs (`setInterval` / `setTimeout` vs `GLib.timeout_add`)
+### `[~] C-1.13` Mixed timer APIs (`setInterval` / `setTimeout` vs `GLib.timeout_add`)
 
 **Files:**
 
-- `config/center/workspaces.tsx:214` (`setTimeout`)
-- `config/sidebar/connectivity-toggles.tsx:205` — actually uses
-  GLib.timeout_add but cross-check
-
-- `config/right/network/network.tsx:205` (`setInterval`)
-- `config/right/battery/battery.tsx:147` (`setInterval`)
+- `config/center/workspaces.tsx:214` (`setTimeout`) — handled by C-1.11
+- `config/compositors/niri.ts:283` (`setInterval`) — handled by C-2.5
+- `config/right/network/network.tsx:205` (`setInterval`) — done
+- `config/right/battery/battery.tsx:147` (`setInterval`) — done
 
 `setInterval`/`setTimeout` are AGS shims. They lack priority control and
 don't survive widget cleanup robustly. The rest of the codebase uses
