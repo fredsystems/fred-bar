@@ -210,7 +210,7 @@ needed, make it async.
 
 ---
 
-### `[ ] C-1.10` Tray-item: action group registered under 4 prefixes
+### `[x] C-1.10` Tray-item: action group registered under 4 prefixes
 
 **File:** `config/left/sys-tray/tray-item.tsx:42-48`
 
@@ -223,7 +223,7 @@ spec).
 
 ---
 
-### `[ ] C-1.11` Workspaces popover: closes on hover from button to popover
+### `[x] C-1.11` Workspaces popover: closes on hover from button to popover
 
 **File:** `config/center/workspaces.tsx:222-231`
 
@@ -235,7 +235,7 @@ cancel pending close, on `leave` re-arm.
 
 ---
 
-### `[ ] C-1.12` Backdrop double-add to App
+### `[x] C-1.12` Backdrop double-add to App
 
 **File:** `config/helpers/backdrop.tsx:53-58`
 
@@ -247,23 +247,21 @@ other.
 
 ---
 
-### `[~] C-1.13` Mixed timer APIs (`setInterval` / `setTimeout` vs `GLib.timeout_add`)
+### `[x] C-1.13` Mixed timer APIs (`setInterval` / `setTimeout` vs `GLib.timeout_add`)
 
-**Files:**
+**Files (all migrated):**
 
-- `config/center/workspaces.tsx:214` (`setTimeout`) — handled by C-1.11
-- `config/compositors/niri.ts:283` (`setInterval`) — done (C-2.5 replaced
-  the entire poll with an event-stream subscription)
+- `config/center/workspaces.tsx` — open/close hover delays now use
+  `GLib.timeout_add` (resolved alongside C-1.11)
+- `config/compositors/niri.ts:283` (`setInterval`) — replaced by event
+  stream (C-2.5)
 - `config/right/network/network.tsx:205` (`setInterval`) — done
 - `config/right/battery/battery.tsx:147` (`setInterval`) — done
 
-`setInterval`/`setTimeout` are AGS shims. They lack priority control and
-don't survive widget cleanup robustly. The rest of the codebase uses
-`GLib.timeout_add` with self-rescheduling for sleep-cascade safety.
-
-**Fix:** standardize on `GLib.timeout_add` + `SOURCE_REMOVE` self-reschedule
-(pattern already used in `time-pill.tsx`, `media-player.tsx`,
-`tooltip.tsx`).
+`setInterval`/`setTimeout` are AGS shims with no priority control and
+fragile cleanup semantics. Standardised on `GLib.timeout_add` + explicit
+`GLib.source_remove` for cancellation, matching the pattern already used
+in `time-pill.tsx`, `media-player.tsx`, and `tooltip.tsx`.
 
 ---
 

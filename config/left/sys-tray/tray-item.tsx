@@ -1,5 +1,6 @@
 import AstalTray from "gi://AstalTray";
 import Gdk from "gi://Gdk?version=4.0";
+import Gio from "gi://Gio";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 import { attachTooltip } from "helpers/tooltip";
@@ -13,6 +14,43 @@ type TrayButton = Gtk.Button & {
 
 // ---- Global "only one popover open" state ----
 let OPEN_POPOVER: Gtk.Popover | null = null;
+
+/**
+ * Walk a menu_model and collect the set of action prefixes referenced by
+ * its items (e.g. `dbusmenu`, `app`, `unity`, `indicator`). The
+ * StatusNotifierItem spec uses `dbusmenu.` exclusively, but in practice
+ * different toolkits emit menus with different prefixes. We register the
+ * action_group only under the prefixes that actually appear, plus
+ * `dbusmenu` as a safety baseline (some bare menus rely on it implicitly).
+ */
+function collectActionPrefixes(model: Gio.MenuModel): Set<string> {
+  const prefixes = new Set<string>(["dbusmenu"]);
+  const visit = (m: Gio.MenuModel): void => {
+    const n = m.get_n_items();
+    for (let i = 0; i < n; i++) {
+      const actionVar = m.get_item_attribute_value(
+        i,
+        Gio.MENU_ATTRIBUTE_ACTION,
+        null,
+      );
+      if (actionVar) {
+        const action = actionVar.get_string()[0];
+        const dot = action.indexOf(".");
+        if (dot > 0) prefixes.add(action.slice(0, dot));
+      }
+      const section = m.get_item_link(i, Gio.MENU_LINK_SECTION);
+      if (section) visit(section);
+      const submenu = m.get_item_link(i, Gio.MENU_LINK_SUBMENU);
+      if (submenu) visit(submenu);
+    }
+  };
+  try {
+    visit(model);
+  } catch (err) {
+    console.warn("Tray menu prefix scan failed:", err);
+  }
+  return prefixes;
+}
 
 function closeOpenPopover(): void {
   if (!OPEN_POPOVER) return;
@@ -45,13 +83,15 @@ function ensurePopover(button: TrayButton, item: TrayItem): Gtk.Popover | null {
     popover.set_position(Gtk.PositionType.BOTTOM);
     popover.add_css_class("tray-menu");
 
-    // Register action group with multiple prefixes to support different tray items
-    // Different apps use different action prefixes (app., unity., indicator., dbusmenu.)
+    // Register the action_group only under prefixes the menu actually
+    // uses. Previously we blanket-registered under dbusmenu/app/unity/
+    // indicator which works but pollutes GTK's action map per item and
+    // makes activation lookups ambiguous. See AUDIT C-1.10.
     if (item.action_group) {
-      popover.insert_action_group("dbusmenu", item.action_group); // dbusmenu. prefix (StatusNotifierItem)
-      popover.insert_action_group("app", item.action_group); // app. prefix
-      popover.insert_action_group("unity", item.action_group); // unity. prefix
-      popover.insert_action_group("indicator", item.action_group); // indicator. prefix
+      const prefixes = collectActionPrefixes(item.menu_model);
+      for (const p of prefixes) {
+        popover.insert_action_group(p, item.action_group);
+      }
     }
 
     popover.connect("closed", () => {
