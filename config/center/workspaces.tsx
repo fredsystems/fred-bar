@@ -1,3 +1,4 @@
+import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
 import { getCompositor } from "compositors";
@@ -203,34 +204,72 @@ export function Workspaces(): Gtk.Box {
       preview.set_parent(button);
       popovers.push(preview);
 
-      // Show preview on hover
-      const hoverController = new Gtk.EventControllerMotion();
-      let hoverTimeout: number | null = null;
-      let isHovering = false;
+      /* --------------------------------------------------------------
+       * Hover semantics
+       * --------------------------------------------------------------
+       * The cursor must be allowed to leave the button and enter the
+       * popover surface without the popover popping down. We track
+       * "hover state" as a union of (button hovered) ∨ (popover hovered)
+       * and only close after a short grace period during which neither
+       * is hovered. See AUDIT C-1.11.
+       * ------------------------------------------------------------ */
+      let buttonHover = false;
+      let popoverHover = false;
+      let openTimer: number | null = null;
+      let closeTimer: number | null = null;
 
-      hoverController.connect("enter", () => {
-        isHovering = true;
-        // Small delay before showing preview
-        hoverTimeout = setTimeout(() => {
-          if (isHovering) {
-            preview.popup();
-          }
-          hoverTimeout = null;
-        }, 500) as unknown as number;
-      });
-
-      hoverController.connect("leave", () => {
-        isHovering = false;
-        // Clear timeout if we leave before it triggers
-        if (hoverTimeout !== null) {
-          clearTimeout(hoverTimeout);
-          hoverTimeout = null;
+      const cancelOpen = () => {
+        if (openTimer !== null) {
+          GLib.source_remove(openTimer);
+          openTimer = null;
         }
-        // Close immediately when leaving
-        preview.popdown();
-      });
+      };
+      const cancelClose = () => {
+        if (closeTimer !== null) {
+          GLib.source_remove(closeTimer);
+          closeTimer = null;
+        }
+      };
+      const scheduleClose = () => {
+        cancelClose();
+        closeTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
+          closeTimer = null;
+          if (!buttonHover && !popoverHover) preview.popdown();
+          return GLib.SOURCE_REMOVE;
+        });
+      };
+      const scheduleOpen = () => {
+        cancelOpen();
+        openTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+          openTimer = null;
+          if (buttonHover || popoverHover) preview.popup();
+          return GLib.SOURCE_REMOVE;
+        });
+      };
 
-      button.add_controller(hoverController);
+      const buttonHoverCtl = new Gtk.EventControllerMotion();
+      buttonHoverCtl.connect("enter", () => {
+        buttonHover = true;
+        cancelClose();
+        if (!preview.get_visible()) scheduleOpen();
+      });
+      buttonHoverCtl.connect("leave", () => {
+        buttonHover = false;
+        cancelOpen();
+        scheduleClose();
+      });
+      button.add_controller(buttonHoverCtl);
+
+      const popoverHoverCtl = new Gtk.EventControllerMotion();
+      popoverHoverCtl.connect("enter", () => {
+        popoverHover = true;
+        cancelClose();
+      });
+      popoverHoverCtl.connect("leave", () => {
+        popoverHover = false;
+        scheduleClose();
+      });
+      preview.add_controller(popoverHoverCtl);
 
       box.append(button);
     }

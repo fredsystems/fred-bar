@@ -49,13 +49,12 @@ export function createBackdrop(
     backdrop.visible = targetWindow.visible;
   });
 
-  // Register with App
-  const anyApp = App as unknown as {
-    addWindow?: (w: Gtk.Window) => void;
-    add_window?: (w: Gtk.Window) => void;
-  };
-  anyApp.addWindow?.(backdrop);
-  anyApp.add_window?.(backdrop);
+  // Register with App. AGS' Astal.Application binding exposes `add_window`
+  // (the GIR/GTK name); the camelCase alias is provided by some bindings
+  // but `add_window` is canonical and always present in gtk-4.0.
+  (App as unknown as { add_window: (w: Gtk.Window) => void }).add_window(
+    backdrop,
+  );
 
   return backdrop;
 }
