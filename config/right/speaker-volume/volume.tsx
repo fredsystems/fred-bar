@@ -164,9 +164,6 @@ export function VolumePill(): Gtk.Box {
   // Initial render
   update();
 
-  // Listen for default speaker changes (device hotplug)
-  const speakerChangedId = audio.connect("notify::default-speaker", update);
-
   // Track signal handlers for current speaker
   let currentSpeakerHandlers: number[] = [];
 
@@ -197,8 +194,11 @@ export function VolumePill(): Gtk.Box {
   // Initial connection to current speaker
   connectSpeakerSignals();
 
-  // Reconnect when default speaker changes (e.g., plugging in headphones)
-  audio.connect("notify::default-speaker", () => {
+  // Reconnect when default speaker changes (e.g., plugging in headphones).
+  // A single handler covers both "rewire signals to the new device" and
+  // "redraw the pill" — a previously-existing duplicate audio.connect that
+  // only called update() leaked its handler id and doubled the work.
+  const speakerChangedId = audio.connect("notify::default-speaker", () => {
     connectSpeakerSignals();
     update();
   });

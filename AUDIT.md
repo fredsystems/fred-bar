@@ -112,7 +112,7 @@ requires the adapter to fire the signal. No fire → no update.
 
 ---
 
-### `[ ] C-1.3` Volume widget: duplicate `notify::default-speaker` handler
+### `[x] C-1.3` Volume widget: duplicate `notify::default-speaker` handler
 
 **File:** `config/right/speaker-volume/volume.tsx:168, :201`
 
