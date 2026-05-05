@@ -125,7 +125,7 @@ disconnected in `_cleanup`.
 
 ---
 
-### `[ ] C-1.4` Calendar fetch race on rapid day navigation
+### `[x] C-1.4` Calendar fetch race on rapid day navigation
 
 **File:** `config/right/time-pill/calendar-service.tsx`
 
@@ -138,7 +138,7 @@ to DDC `getvcp` polling in `config/sidebar/sliders.tsx:401-424`.
 
 ---
 
-### `[ ] C-1.5` Network pill: `notify` (no detail) is too broad
+### `[x] C-1.5` Network pill: `notify` (no detail) is too broad
 
 **File:** `config/right/network/network.tsx:201-202, :205-213`
 
@@ -161,7 +161,7 @@ re-shells `nmcli` synchronously on the GTK main thread (line 181 inside
 
 ---
 
-### `[ ] C-1.6` Connectivity-toggles: same nmcli-on-main issue
+### `[x] C-1.6` Connectivity-toggles: same nmcli-on-main issue
 
 **File:** `config/sidebar/connectivity-toggles.tsx:12-35, :308-319`
 
@@ -196,7 +196,7 @@ Lines 397-399 do an `_async` call whose output is discarded; lines
 
 ---
 
-### `[ ] C-1.9` System actions: 3× synchronous `pgrep` per construction
+### `[x] C-1.9` System actions: 3× synchronous `pgrep` per construction
 
 **File:** `config/sidebar/system-actions.tsx:19-46`
 
@@ -457,24 +457,32 @@ property changes at runtime are never reflected.
 
 ## 3. Architecture / quality
 
-### `[ ] C-3.1` Centralize VPN + compositor detection
+### `[x] C-3.1` Centralize VPN + compositor detection
 
-**Files:**
+**Files (refactored):**
 
-- `config/sidebar/connectivity-toggles.tsx`
-- `config/right/network/network.tsx`
-- `config/sidebar/system-actions.tsx`
-- `config/compositors/index.ts`
+- `config/services/vpn.tsx` — new. Singleton-style module: one async
+  nmcli poll (3 s, `Gio.Subprocess`), shared subscribe/unsubscribe API,
+  `toggleVpn()`. Network types `vpn` and `wireguard` both recognised.
+  Poller stops when subscriber count reaches zero; restarts on
+  resubscribe.
+- `config/services/compositor-detect.tsx` — new. Detects compositor
+  identity once at module load: env var first, async `pgrep` fallback
+  via `runAsync`. Exposes `getCompositorKind()` and
+  `getCompositorExitCommand()`.
+- `config/helpers/subprocess.tsx` — new. Houses the shared `runAsync`
+  helper (extracted from `sliders.tsx`) plus a `spawnDetached` wrapper
+  for fire-and-forget commands. All non-blocking by construction.
+- `config/right/network/network.tsx` — drops local `checkVpnStatus`
+  and 3 s `GLib.timeout_add` poll; subscribes to the service.
+- `config/sidebar/connectivity-toggles.tsx` — same. Drops local
+  `checkVpnStatus` and `toggleVpn` helpers.
+- `config/sidebar/system-actions.tsx` — drops the 3× sync `pgrep`
+  detection (resolves C-1.9). Switches to argv arrays + `spawnDetached`.
 
-Multiple files independently shell `nmcli` and `pgrep`.
-
-**Fix:**
-
-- `config/services/vpn.tsx` — singleton, async monitor (or D-Bus),
-  expose subscribe API.
-
-- `config/services/compositor-detect.tsx` — detect once at module load,
-  cache, expose `getDetectedCompositor(): "hyprland" | "niri" | "sway" | "other"`.
+Net effect: zero synchronous `nmcli` / `pgrep` shellings on the GTK
+main thread; one shared 3 s VPN poll instead of two; compositor kind
+resolved exactly once.
 
 ---
 

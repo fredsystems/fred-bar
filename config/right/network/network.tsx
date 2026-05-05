@@ -1,8 +1,8 @@
 import Network from "gi://AstalNetwork";
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
 import { attachTooltip } from "helpers/tooltip";
+import { subscribeVpn, type VpnStatus } from "services/vpn";
 
 /* -----------------------------
  * Network Widget - AstalNetwork Integration
@@ -55,44 +55,13 @@ function vpnIcon(): string {
 }
 
 /**
- * Checks if a VPN connection is active using nmcli
- * @returns Object with VPN status and connection name
- */
-function checkVpnStatus(): { active: boolean; name: string } {
-  try {
-    const [success, stdout] = GLib.spawn_command_line_sync(
-      "nmcli -t -f NAME,TYPE connection show --active",
-    );
-
-    if (!success || !stdout) {
-      return { active: false, name: "" };
-    }
-
-    const decoder = new TextDecoder();
-    const output = decoder.decode(stdout);
-    const lines = output.split("\n");
-
-    for (const line of lines) {
-      const [name, type] = line.split(":");
-      if (type === "vpn") {
-        return { active: true, name: name || "VPN" };
-      }
-    }
-
-    return { active: false, name: "" };
-  } catch (_e) {
-    return { active: false, name: "" };
-  }
-}
-
-/**
  * Determines current network state and returns display info
  * @param network - AstalNetwork.Network instance
  * @returns Object with icon, label, and connection status
  */
 function getNetworkInfo(
   network: Network.Network,
-  vpnStatus: { active: boolean; name: string },
+  vpnStatus: VpnStatus,
 ): {
   icon: string;
   connected: boolean;
@@ -160,8 +129,8 @@ export function NetworkPill(): Gtk.Box {
   // Track current CSS class for tooltip theming
   let currentClass = "network-connected";
 
-  // Track VPN status
-  let vpnStatus = checkVpnStatus();
+  // VPN status maintained via shared service (no per-widget polling).
+  let vpnStatus: VpnStatus = { active: false, name: "" };
 
   // Create container box with pill styling
   const box = new Gtk.Box({
@@ -177,9 +146,6 @@ export function NetworkPill(): Gtk.Box {
    * Updates widget display based on current network state
    */
   function update(): void {
-    // Check VPN status
-    vpnStatus = checkVpnStatus();
-
     const info = getNetworkInfo(network, vpnStatus);
 
     icon.label = info.icon;
@@ -193,27 +159,39 @@ export function NetworkPill(): Gtk.Box {
     box.add_css_class(currentClass);
   }
 
-  // Initial render
+  // Initial render (empty VPN state until first poll completes; service
+  // fires our callback synchronously on subscribe with the cached value
+  // and again when it changes).
   update();
 
-  // Subscribe to network state changes (GObject signals)
-  // These fire automatically when network properties change
-  const wifiHandler = network.wifi?.connect("notify", update);
-  const wiredHandler = network.wired?.connect("notify", update);
+  // Subscribe to network state changes (GObject signals).
+  // Narrow `notify` to the properties that actually affect what we
+  // render. The bare `notify` signal fires on *any* property change —
+  // including `strength` jitter every few seconds when on WiFi — and
+  // each emit triggers a full update. Listening per-property cuts the
+  // wakeup rate by an order of magnitude. See AUDIT C-1.5.
+  const wifiHandlers = network.wifi
+    ? [
+        network.wifi.connect("notify::ssid", update),
+        network.wifi.connect("notify::strength", update),
+        network.wifi.connect("notify::internet", update),
+        network.wifi.connect("notify::active-access-point", update),
+        network.wifi.connect("notify::frequency", update),
+        network.wifi.connect("notify::enabled", update),
+      ]
+    : [];
+  const wiredHandlers = network.wired
+    ? [
+        network.wired.connect("notify::internet", update),
+        network.wired.connect("notify::state", update),
+        network.wired.connect("notify::speed", update),
+      ]
+    : [];
 
-  // Poll VPN status every 3 seconds since AstalNetwork doesn't expose VPN.
-  // Use GLib.timeout_add (not the ags setInterval shim) for GLib priority
-  // semantics and consistent suspend/resume behavior. C-3.1 will move VPN
-  // detection out of this widget into a shared service.
-  const vpnPollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
-    const newVpnStatus = checkVpnStatus();
-    if (
-      newVpnStatus.active !== vpnStatus.active ||
-      newVpnStatus.name !== vpnStatus.name
-    ) {
-      update();
-    }
-    return GLib.SOURCE_CONTINUE;
+  // Subscribe to centralised VPN service (see services/vpn.tsx).
+  const unsubscribeVpn = subscribeVpn((status) => {
+    vpnStatus = status;
+    update();
   });
 
   /* -----------------------------
@@ -277,13 +255,13 @@ export function NetworkPill(): Gtk.Box {
 
   (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
     // Disconnect GObject signal handlers to prevent memory leaks
-    if (wifiHandler && network.wifi) {
-      network.wifi.disconnect(wifiHandler);
+    if (network.wifi) {
+      for (const id of wifiHandlers) network.wifi.disconnect(id);
     }
-    if (wiredHandler && network.wired) {
-      network.wired.disconnect(wiredHandler);
+    if (network.wired) {
+      for (const id of wiredHandlers) network.wired.disconnect(id);
     }
-    GLib.Source.remove(vpnPollInterval);
+    unsubscribeVpn();
   };
 
   return box;

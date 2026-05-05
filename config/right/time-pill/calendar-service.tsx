@@ -37,6 +37,15 @@ export class CalendarService {
   private isApiAvailable = false;
   private currentDateOffset = 0; // 0 = today, 1 = tomorrow, -1 = yesterday, etc.
 
+  /**
+   * Monotonically increasing request id. Each fetch captures the id at
+   * call site; the async completion compares against the latest before
+   * applying its result. This prevents stale fetches from overwriting
+   * fresh ones when the user navigates rapidly via previousDay()/
+   * nextDay() (taps faster than network round-trip). See AUDIT C-1.4.
+   */
+  private latestRequestId = 0;
+
   constructor() {
     // Start fetching immediately
     this.fetchCalendarData();
@@ -136,6 +145,10 @@ export class CalendarService {
   }
 
   private performFetch(): void {
+    // Capture this fetch's id; the async callback will compare it
+    // against `latestRequestId` and bail if a newer fetch has started.
+    const requestId = ++this.latestRequestId;
+
     try {
       const currentDate = this.getCurrentDate();
       const _dateStr = currentDate ? currentDate.format("%Y-%m-%d") : "unknown";
@@ -144,6 +157,11 @@ export class CalendarService {
       const file = Gio.File.new_for_uri(apiUrl);
 
       file.load_contents_async(null, (source, result) => {
+        if (requestId !== this.latestRequestId) {
+          // A newer fetch has been issued; this response is stale.
+          return;
+        }
+
         try {
           if (!source) {
             this.handleFetchError("Source is null");
