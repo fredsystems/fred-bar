@@ -360,7 +360,7 @@ of `C-1.2`). Use `Gio.Subprocess` + `Gio.DataInputStream.read_line_async`.
 
 ---
 
-### `[ ] C-2.6` `Gio.AppInfo.get_all()` called per icon resolve
+### `[x] C-2.6` `Gio.AppInfo.get_all()` called per icon resolve
 
 **File:** `config/helpers/icon-resolver.tsx:39`
 
@@ -381,7 +381,7 @@ Plus a `Map<string, Gio.Icon | null>` memo keyed by `appClass`.
 
 ---
 
-### `[ ] C-2.7` Dead try/catch arms around `Gio.ThemedIcon.new()`
+### `[x] C-2.7` Dead try/catch arms around `Gio.ThemedIcon.new()`
 
 **File:** `config/helpers/icon-resolver.tsx:31, 69, 78, 87, 94`
 
