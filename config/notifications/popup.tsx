@@ -169,6 +169,14 @@ export function PopupNotificationContainer(
   });
 
   const popups = new Map<number, Gtk.Widget>();
+  // Track currently-shown popup id per (appName + syncTag) so a follow-up
+  // notification with the same tag replaces the existing popup instead of
+  // stacking. This is what makes volume / brightness OSDs feel right.
+  const syncTagToId = new Map<string, number>();
+
+  function syncKey(appName: string, tag: string): string {
+    return `${appName}\x00${tag}`;
+  }
 
   function checkAndNotify(): void {
     if (popups.size === 0) {
@@ -183,13 +191,29 @@ export function PopupNotificationContainer(
     // Don't show duplicate popups
     if (popups.has(notification.id)) return;
 
+    // Synchronous-tag replacement: dismiss any prior popup that shares the
+    // same (appName, syncTag) key before showing the new one.
+    if (notification.syncTag !== null) {
+      const key = syncKey(notification.appName, notification.syncTag);
+      const priorId = syncTagToId.get(key);
+      if (priorId !== undefined && priorId !== notification.id) {
+        // Mirror what the user pressing "close" does — remove from the
+        // server too so the prior notification doesn't linger as resolved
+        // history elsewhere.
+        notificationService.dismissDuringPopup(priorId);
+        removePopup(priorId);
+      }
+      syncTagToId.set(key, notification.id);
+    }
+
     const popup = PopupNotification({
       notification,
       onDismiss: () => {
         removePopup(notification.id);
       },
       onTimeout: () => {
-        // Timeout means it should go to history
+        // Timeout means it should go to history (unless transient/sync-tagged
+        // — the service has already excluded those from getNotifications()).
         removePopup(notification.id);
       },
     });
@@ -206,6 +230,10 @@ export function PopupNotificationContainer(
     (popup as Gtk.Widget & { _cleanup?: () => void })._cleanup?.();
     container.remove(popup);
     popups.delete(id);
+    // Clear any sync-tag mapping that points at this id.
+    for (const [key, mappedId] of syncTagToId) {
+      if (mappedId === id) syncTagToId.delete(key);
+    }
     checkAndNotify();
   }
 
@@ -216,12 +244,12 @@ export function PopupNotificationContainer(
 
   // Also listen for dismissals
   const unsubscribeMain = notificationService.subscribe(() => {
-    // Remove any popups that were dismissed externally
+    // Remove any popups that were dismissed externally on the server. Use
+    // hasLiveNotification() rather than getNotifications() so transient and
+    // synchronous-tagged popups (which are excluded from history) aren't
+    // wrongly torn down before their timeout completes.
     for (const [id, _popup] of popups) {
-      const exists = notificationService
-        .getNotifications()
-        .some((n) => n.id === id);
-      if (!exists) {
+      if (!notificationService.hasLiveNotification(id)) {
         removePopup(id);
       }
     }
