@@ -286,6 +286,26 @@ a given tray icon sits.
 
 ---
 
+### `[x] C-1.15` Workspace pill hover oscillation on the left margin
+
+**File:** `config/center/window-workspaces-pill.tsx:42-57`
+
+The pill uses `halign: CENTER`, so when its `Gtk.Revealer` slides open
+the whole box widens _symmetrically_ — its left edge moves left during
+the 180 ms `SLIDE_RIGHT` animation. If the cursor is parked in the few
+pixels between the outer `.window-workspaces` border and the inner
+`.workspaces` pill margin, the relayout briefly moves the box's
+allocated bounds out from under the cursor, firing `leave` →
+`set_reveal_child(false)` → box re-shrinks → cursor re-enters → `enter`
+fires → revealer reopens → loop. Result: visible flicker, sometimes
+permanent stuck-open or stuck-closed state.
+
+**Fix (applied):** treat `leave` as tentative. Schedule the actual
+collapse via `GLib.timeout_add(80ms)`; if `enter` arrives before the
+timer fires, cancel the collapse. Same debounce pattern as C-1.11.
+
+---
+
 ## 2. Memory / performance
 
 ### `[x] C-2.1` `systemState` 250 ms churn
