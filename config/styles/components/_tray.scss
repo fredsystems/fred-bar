@@ -32,8 +32,12 @@ popover.tray-menu {
   border: none;
   padding: 0;
   margin: 0;
-  margin-top: 32px;
-  margin-left: -32px;
+  // The popover is now anchored BOTTOM (see tray-item.tsx) and arrow is
+  // hidden, so the menu drops straight down from the tray button. No
+  // horizontal offset — GTK 4 will auto-flip if the menu would overflow
+  // the monitor's right edge. The previous `margin-left: -32px` was a
+  // workaround for PositionType.LEFT and clipped the menu's left side
+  // when the bar's tray was near the screen edge.
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 
   // ScrolledWindow (direct child)
