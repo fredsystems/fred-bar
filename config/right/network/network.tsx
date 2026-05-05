@@ -201,8 +201,11 @@ export function NetworkPill(): Gtk.Box {
   const wifiHandler = network.wifi?.connect("notify", update);
   const wiredHandler = network.wired?.connect("notify", update);
 
-  // Poll VPN status every 3 seconds since AstalNetwork doesn't expose VPN
-  const vpnPollInterval = setInterval(() => {
+  // Poll VPN status every 3 seconds since AstalNetwork doesn't expose VPN.
+  // Use GLib.timeout_add (not the ags setInterval shim) for GLib priority
+  // semantics and consistent suspend/resume behavior. C-3.1 will move VPN
+  // detection out of this widget into a shared service.
+  const vpnPollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
     const newVpnStatus = checkVpnStatus();
     if (
       newVpnStatus.active !== vpnStatus.active ||
@@ -210,7 +213,8 @@ export function NetworkPill(): Gtk.Box {
     ) {
       update();
     }
-  }, 3000);
+    return GLib.SOURCE_CONTINUE;
+  });
 
   /* -----------------------------
    * Tooltip
@@ -279,7 +283,7 @@ export function NetworkPill(): Gtk.Box {
     if (wiredHandler && network.wired) {
       network.wired.disconnect(wiredHandler);
     }
-    clearInterval(vpnPollInterval);
+    GLib.Source.remove(vpnPollInterval);
   };
 
   return box;
