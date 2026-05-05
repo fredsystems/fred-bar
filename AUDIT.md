@@ -105,10 +105,10 @@ requires the adapter to fire the signal. No fire → no update.
   this.hypr.connect("notify::focused-client", rewire);
   ```
 
-- Niri: best fix is `C-2.5` (event-stream). Until then, include title in
-  the polled signature.
+- Niri: replaced wholesale by `C-2.5`; the title-in-signature workaround
+  is gone now that the adapter consumes `WindowOpenedOrChanged` directly.
 
-**Cross-link:** `C-2.5` (niri event-stream) supersedes the niri half.
+**Cross-link:** `C-2.5` (niri event-stream) supersedes the niri half — done.
 
 ---
 
@@ -252,7 +252,8 @@ other.
 **Files:**
 
 - `config/center/workspaces.tsx:214` (`setTimeout`) — handled by C-1.11
-- `config/compositors/niri.ts:283` (`setInterval`) — handled by C-2.5
+- `config/compositors/niri.ts:283` (`setInterval`) — done (C-2.5 replaced
+  the entire poll with an event-stream subscription)
 - `config/right/network/network.tsx:205` (`setInterval`) — done
 - `config/right/battery/battery.tsx:147` (`setInterval`) — done
 
@@ -363,7 +364,7 @@ widget teardown.
 
 ---
 
-### `[ ] C-2.5` Niri adapter: drop polling for event-stream
+### `[x] C-2.5` Niri adapter: drop polling for event-stream
 
 **File:** `config/compositors/niri.ts:283-321`
 
