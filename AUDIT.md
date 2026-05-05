@@ -313,7 +313,7 @@ signal/service — wire as event sources and recompute only on change.
 
 ---
 
-### `[ ] C-2.2` Tooltip widget churn on mouse-move
+### `[x] C-2.2` Tooltip widget churn on mouse-move
 
 **File:** `config/helpers/tooltip.tsx:28-79`
 
