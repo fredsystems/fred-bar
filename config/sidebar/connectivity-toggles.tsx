@@ -1,60 +1,11 @@
 import Bluetooth from "gi://AstalBluetooth";
 import Network from "gi://AstalNetwork";
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+
+import { subscribeVpn, toggleVpn, type VpnStatus } from "services/vpn";
 
 const bluetooth = Bluetooth.get_default();
 const network = Network.get_default();
-
-// VPN detection helper
-function checkVpnStatus(): { active: boolean; name: string } {
-  try {
-    const [success, stdout] = GLib.spawn_command_line_sync(
-      "nmcli -t -f NAME,TYPE connection show --active",
-    );
-
-    if (!success || !stdout) {
-      return { active: false, name: "" };
-    }
-
-    const decoder = new TextDecoder();
-    const output = decoder.decode(stdout);
-    const lines = output.split("\n");
-
-    for (const line of lines) {
-      const [name, type] = line.split(":");
-      if (type === "vpn") {
-        return { active: true, name: name || "VPN" };
-      }
-    }
-
-    return { active: false, name: "" };
-  } catch (_e) {
-    return { active: false, name: "" };
-  }
-}
-
-function toggleVpn(currentlyActive: boolean): void {
-  if (currentlyActive) {
-    // Disconnect active VPN
-    try {
-      GLib.spawn_command_line_async(
-        "nmcli connection down id $(nmcli -t -f NAME,TYPE connection show --active | grep ':vpn$' | cut -d: -f1 | head -n1)",
-      );
-    } catch (e) {
-      console.error("Failed to disconnect VPN:", e);
-    }
-  } else {
-    // Try to connect to first available VPN
-    try {
-      GLib.spawn_command_line_async(
-        "nmcli connection up $(nmcli -t -f NAME,TYPE connection | grep ':vpn$' | cut -d: -f1 | head -n1)",
-      );
-    } catch (e) {
-      console.error("Failed to connect VPN:", e);
-    }
-  }
-}
 
 export function ConnectivityToggles(): Gtk.Box {
   const container = new Gtk.Box({
@@ -171,8 +122,7 @@ export function ConnectivityToggles(): Gtk.Box {
   vpnBtn.set_child(vpnBox);
 
   vpnBtn.connect("clicked", () => {
-    const vpnStatus = checkVpnStatus();
-    toggleVpn(vpnStatus.active);
+    toggleVpn();
   });
 
   connectivityRow.append(vpnBtn);
@@ -255,9 +205,10 @@ export function ConnectivityToggles(): Gtk.Box {
     }
   }
 
-  function updateVpn(): void {
-    const vpnStatus = checkVpnStatus();
+  // Track latest VPN status fed by the centralised service.
+  let vpnStatus: VpnStatus = { active: false, name: "" };
 
+  function updateVpn(): void {
     if (vpnStatus.active) {
       vpnBtn.add_css_class("active");
       vpnIcon.label = "󰖂"; // VPN connected
@@ -299,24 +250,13 @@ export function ConnectivityToggles(): Gtk.Box {
 
   const wiredHandler = network.wired?.connect("notify::state", updateEthernet);
 
-  // VPN monitoring via polling (since AstalNetwork doesn't expose VPN).
-  // Uses self-scheduling (SOURCE_REMOVE + manual reschedule) rather than
-  // return true to avoid the GLib "catch-up cascade" after system sleep:
-  // a repeating timer reschedules from its *last* fire time, so after a long
-  // sleep GLib would rapid-fire many callbacks before the event loop can handle
-  // any input. With SOURCE_REMOVE we always reschedule from now.
-  let vpnPollId: number | null = null;
-
-  const scheduleVpnPoll = () => {
-    vpnPollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 3000, () => {
-      vpnPollId = null;
-      updateVpn();
-      scheduleVpnPoll();
-      return GLib.SOURCE_REMOVE;
-    });
-  };
-
-  scheduleVpnPoll();
+  // VPN status fed by the shared service (single 3 s nmcli poll for all
+  // subscribers; previously connectivity-toggles + network-pill ran two
+  // independent polls). See AUDIT C-3.1.
+  const unsubscribeVpn = subscribeVpn((status) => {
+    vpnStatus = status;
+    updateVpn();
+  });
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
@@ -338,10 +278,7 @@ export function ConnectivityToggles(): Gtk.Box {
     if (wiredHandler && network.wired) {
       network.wired.disconnect(wiredHandler);
     }
-    if (vpnPollId !== null) {
-      GLib.source_remove(vpnPollId);
-      vpnPollId = null;
-    }
+    unsubscribeVpn();
   };
 
   return container;

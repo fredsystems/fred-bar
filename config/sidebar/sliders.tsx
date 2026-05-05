@@ -1,47 +1,10 @@
 import Wp from "gi://AstalWp";
-import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { runAsync } from "helpers/subprocess";
+
 const audio = Wp.get_default();
-
-/**
- * Run a shell command without blocking the GTK main loop and resolve with
- * the captured stdout. We use Gio.Subprocess (the GLib-blessed async-IO
- * primitive) so the result lands on the main thread via the GLib MainContext
- * — no manual `idle_add` plumbing required.
- *
- * Errors and non-zero exits resolve to `null` rather than rejecting; callers
- * uniformly want "if it didn't work, fall through" semantics, and we'd
- * otherwise need a try/catch at every call site.
- */
-function runAsync(argv: string[]): Promise<string | null> {
-  return new Promise((resolve) => {
-    let proc: Gio.Subprocess;
-    try {
-      proc = Gio.Subprocess.new(
-        argv,
-        Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE,
-      );
-    } catch {
-      resolve(null);
-      return;
-    }
-
-    proc.communicate_utf8_async(null, null, (_p, res) => {
-      try {
-        const [success, stdout] = proc.communicate_utf8_finish(res);
-        if (!success || !proc.get_successful()) {
-          resolve(null);
-          return;
-        }
-        resolve(stdout ?? null);
-      } catch {
-        resolve(null);
-      }
-    });
-  });
-}
 
 // Brightness control using /sys/class/backlight and /sys/class/leds
 interface BrightnessDevice {

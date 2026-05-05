@@ -1,82 +1,34 @@
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
-// Detect which compositor is running
-function detectCompositor(): "hyprland" | "niri" | "sway" | "other" {
-  const session = GLib.getenv("XDG_CURRENT_DESKTOP") || "";
-  const sessionLower = session.toLowerCase();
+import { spawnDetached } from "helpers/subprocess";
+import { getCompositorExitCommand } from "services/compositor-detect";
 
-  if (sessionLower.includes("hyprland")) {
-    return "hyprland";
-  }
-  if (sessionLower.includes("niri")) {
-    return "niri";
-  }
-  if (sessionLower.includes("sway")) {
-    return "sway";
-  }
-
-  // Try checking running processes
-  try {
-    const [, stdout] = GLib.spawn_command_line_sync("pgrep -x hyprland");
-    if (stdout && stdout.length > 0) {
-      return "hyprland";
-    }
-  } catch {
-    // ignore
-  }
-
-  try {
-    const [, stdout] = GLib.spawn_command_line_sync("pgrep -x niri");
-    if (stdout && stdout.length > 0) {
-      return "niri";
-    }
-  } catch {
-    // ignore
-  }
-
-  try {
-    const [, stdout] = GLib.spawn_command_line_sync("pgrep -x sway");
-    if (stdout && stdout.length > 0) {
-      return "sway";
-    }
-  } catch {
-    // ignore
-  }
-
-  return "other";
+function getLogoutCommand(): string[] {
+  return getCompositorExitCommand() ?? ["loginctl", "terminate-user", "$USER"];
 }
 
-function getCompositorExitCommand(): string | null {
-  const compositor = detectCompositor();
-
-  switch (compositor) {
-    case "hyprland":
-      return "setsid hyprshutdown";
-    case "niri":
-      return "niri msg action quit";
-    case "sway":
-      return "swaymsg exit";
-    default:
-      return null;
-  }
-}
-
-function getLogoutCommand(): string {
-  return getCompositorExitCommand() ?? "loginctl terminate-user $USER";
-}
-
-function withCompositorExit(systemCommand: string): string {
+function withCompositorExit(systemCommand: string[]): string[] {
   const exitCmd = getCompositorExitCommand();
-  return exitCmd ? `sh -c '${exitCmd} && ${systemCommand}'` : systemCommand;
+  if (!exitCmd) return systemCommand;
+  // Compose: run compositor exit, then the system command. Falling back
+  // to a shell here is unavoidable because we want sequencing.
+  const exitStr = exitCmd.map(shellQuote).join(" ");
+  const sysStr = systemCommand.map(shellQuote).join(" ");
+  return ["sh", "-c", `${exitStr} && ${sysStr}`];
 }
 
-function executeCommand(command: string): void {
-  try {
-    GLib.spawn_command_line_async(command);
-  } catch (e) {
-    console.error(`Failed to execute command: ${command}`, e);
-  }
+/**
+ * Quote a single argv token for a `sh -c` body. Only runs against
+ * trusted, hard-coded values (compositor exit + systemctl invocations),
+ * but encapsulating it keeps the call sites honest.
+ */
+function shellQuote(arg: string): string {
+  if (/^[a-zA-Z0-9_\-./=]+$/.test(arg)) return arg;
+  return `'${arg.replace(/'/g, "'\\''")}'`;
+}
+
+function executeCommand(argv: string[]): void {
+  spawnDetached(argv);
 }
 
 export function SystemActions(): Gtk.Box {
@@ -140,7 +92,7 @@ export function SystemActions(): Gtk.Box {
   rebootBox.append(rebootLabel);
   rebootBtn.set_child(rebootBox);
   rebootBtn.connect("clicked", () => {
-    executeCommand(withCompositorExit("systemctl reboot"));
+    executeCommand(withCompositorExit(["systemctl", "reboot"]));
   });
   powerRow.append(rebootBtn);
 
@@ -165,7 +117,7 @@ export function SystemActions(): Gtk.Box {
   shutdownBox.append(shutdownLabel);
   shutdownBtn.set_child(shutdownBox);
   shutdownBtn.connect("clicked", () => {
-    executeCommand(withCompositorExit("systemctl poweroff"));
+    executeCommand(withCompositorExit(["systemctl", "poweroff"]));
   });
   powerRow.append(shutdownBtn);
 
