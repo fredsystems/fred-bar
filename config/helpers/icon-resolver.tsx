@@ -21,6 +21,37 @@ const ICON_OVERRIDES: Record<string, string> = {
   thunderbird: "thunderbird",
 };
 
+/**
+ * Cached desktop-application list. Gio.AppInfo.get_all() walks
+ * /usr/share/applications and ~/.local/share/applications and is moderately
+ * expensive — calling it on every workspace preview / window-title update /
+ * notification icon resolve was a measurable hot path.
+ *
+ * AppInfoMonitor invalidates the cache when desktop entries are added,
+ * removed, or modified, so the cache is always fresh without polling.
+ */
+let appsCache: Gio.AppInfo[] | null = null;
+const appInfoMonitor = Gio.AppInfoMonitor.get();
+appInfoMonitor.connect("changed", () => {
+  appsCache = null;
+  iconCache.clear();
+});
+
+function getAllAppInfos(): Gio.AppInfo[] {
+  if (appsCache === null) appsCache = Gio.AppInfo.get_all();
+  return appsCache;
+}
+
+/**
+ * Resolved-icon memo keyed by lowercased appClass. Cleared whenever the
+ * AppInfo list changes (see appInfoMonitor handler above).
+ *
+ * `null` is a meaningful cached value — it means "we tried and the desktop
+ * lookup yielded nothing", so callers should fall through to the
+ * ThemedIcon construction path. We therefore use Map<key, value | null>.
+ */
+const iconCache = new Map<string, Gio.Icon | null>();
+
 export function resolveAppIcon(appClass?: string): Gio.Icon | null {
   if (!appClass) return null;
 
@@ -28,74 +59,59 @@ export function resolveAppIcon(appClass?: string): Gio.Icon | null {
 
   // 1️⃣ Check manual overrides first
   if (ICON_OVERRIDES[classLower]) {
-    try {
-      return Gio.ThemedIcon.new(ICON_OVERRIDES[classLower]);
-    } catch {
-      // Continue to other methods
+    return Gio.ThemedIcon.new(ICON_OVERRIDES[classLower]);
+  }
+
+  // 2️⃣ Try exact match with desktop files (cached)
+  if (iconCache.has(classLower)) {
+    const cached = iconCache.get(classLower);
+    if (cached) return cached;
+  } else {
+    const allApps = getAllAppInfos();
+
+    // Try exact ID match
+    let appInfo = allApps.find(
+      (app) => app.get_id()?.toLowerCase() === `${classLower}.desktop`,
+    );
+
+    // Try contains match
+    if (!appInfo) {
+      appInfo = allApps.find((app) =>
+        app.get_id()?.toLowerCase().includes(classLower),
+      );
     }
-  }
 
-  // 2️⃣ Try exact match with desktop files
-  const allApps = Gio.AppInfo.get_all();
+    // Try reverse domain match (e.g., "dev.zed.Zed" -> "zed")
+    if (!appInfo && appClass.includes(".")) {
+      const parts = appClass.split(".");
+      const simpleName = parts[parts.length - 1].toLowerCase();
+      appInfo = allApps.find((app) =>
+        app.get_id()?.toLowerCase().includes(simpleName),
+      );
+    }
 
-  // Try exact ID match
-  let appInfo = allApps.find(
-    (app) => app.get_id()?.toLowerCase() === `${classLower}.desktop`,
-  );
-
-  // Try contains match
-  if (!appInfo) {
-    appInfo = allApps.find((app) =>
-      app.get_id()?.toLowerCase().includes(classLower),
-    );
-  }
-
-  // Try reverse domain match (e.g., "dev.zed.Zed" -> "zed")
-  if (!appInfo && appClass.includes(".")) {
-    const parts = appClass.split(".");
-    const simpleName = parts[parts.length - 1].toLowerCase();
-    appInfo = allApps.find((app) =>
-      app.get_id()?.toLowerCase().includes(simpleName),
-    );
-  }
-
-  if (appInfo) {
-    const icon = appInfo.get_icon();
+    const icon = appInfo?.get_icon() ?? null;
+    iconCache.set(classLower, icon);
     if (icon) return icon;
   }
 
-  // 3️⃣ Try class name as icon name (lowercase)
-  try {
-    return Gio.ThemedIcon.new(classLower);
-  } catch {
-    // Continue
-  }
-
-  // 4️⃣ Try just the last part of reverse domain
+  // 3️⃣ ThemedIcon fallback chain. Gio.ThemedIcon.new_from_names() builds a
+  // single GIcon carrying multiple candidate names; GTK tries each at render
+  // time and uses the first that resolves in the active theme. The previous
+  // implementation called Gio.ThemedIcon.new() per candidate inside try/catch
+  // arms — but ThemedIcon.new is infallible (it never inspects the theme),
+  // so only the first candidate was ever returned and the fallbacks were
+  // dead code. Using new_from_names restores the intended fallback chain.
+  const candidates: string[] = [classLower];
   if (appClass.includes(".")) {
     const parts = appClass.split(".");
-    const lastName = parts[parts.length - 1].toLowerCase();
-    try {
-      return Gio.ThemedIcon.new(lastName);
-    } catch {
-      // Continue
-    }
+    candidates.push(parts[parts.length - 1].toLowerCase());
   }
-
-  // 5️⃣ Try hyphenated version
   const hyphenated = classLower.replace(/\s+/g, "-");
-  try {
-    return Gio.ThemedIcon.new(hyphenated);
-  } catch {
-    // Continue
-  }
+  if (hyphenated !== classLower) candidates.push(hyphenated);
+  candidates.push("application-x-executable");
 
-  // 6️⃣ Fallback to generic application icon
-  try {
-    return Gio.ThemedIcon.new("application-x-executable");
-  } catch {
-    return null;
-  }
+  return Gio.ThemedIcon.new_from_names(candidates);
 }
 
 /**
@@ -156,12 +172,9 @@ export function resolveNotificationIcon(
       if (fileIcon) return fileIcon;
     }
 
-    // Check if it's an icon name
-    try {
-      return Gio.ThemedIcon.new(customImage);
-    } catch (_e) {
-      // Continue to fallback
-    }
+    // Check if it's an icon name. Gio.ThemedIcon.new is infallible — the
+    // previous try/catch was dead code.
+    return Gio.ThemedIcon.new(customImage);
   }
 
   // 2️⃣ Check if appIcon is a file path (notify-send -i /path/to/image.png)
