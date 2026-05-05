@@ -1,8 +1,47 @@
 import Wp from "gi://AstalWp";
+import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
 const audio = Wp.get_default();
+
+/**
+ * Run a shell command without blocking the GTK main loop and resolve with
+ * the captured stdout. We use Gio.Subprocess (the GLib-blessed async-IO
+ * primitive) so the result lands on the main thread via the GLib MainContext
+ * — no manual `idle_add` plumbing required.
+ *
+ * Errors and non-zero exits resolve to `null` rather than rejecting; callers
+ * uniformly want "if it didn't work, fall through" semantics, and we'd
+ * otherwise need a try/catch at every call site.
+ */
+function runAsync(argv: string[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    let proc: Gio.Subprocess;
+    try {
+      proc = Gio.Subprocess.new(
+        argv,
+        Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE,
+      );
+    } catch {
+      resolve(null);
+      return;
+    }
+
+    proc.communicate_utf8_async(null, null, (_p, res) => {
+      try {
+        const [success, stdout] = proc.communicate_utf8_finish(res);
+        if (!success || !proc.get_successful()) {
+          resolve(null);
+          return;
+        }
+        resolve(stdout ?? null);
+      } catch {
+        resolve(null);
+      }
+    });
+  });
+}
 
 // Brightness control using /sys/class/backlight and /sys/class/leds
 interface BrightnessDevice {
@@ -41,86 +80,97 @@ function getDeviceDisplayName(
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-// Cache for DDC monitor info to avoid slow detection on every call
+// Cache for DDC monitor info to avoid slow detection on every call.
+// Populated asynchronously; until detection finishes we treat it as empty
+// rather than blocking the GTK main loop on `ddcutil detect` (which can
+// take 1-3 seconds even with --sleep-multiplier 0.1).
 let ddcMonitorsCache: Array<{
   bus: string;
   name: string;
   max: number;
 }> | null = null;
+let ddcDetectionInFlight: Promise<void> | null = null;
+
+function parseDdcutilDetect(output: string): Array<{
+  bus: string;
+  name: string;
+  max: number;
+}> {
+  const monitors: Array<{ bus: string; name: string; max: number }> = [];
+  const lines = output.split("\n");
+
+  let currentDisplay: { displayNum: string; name: string } | null = null;
+
+  for (const line of lines) {
+    const displayMatch = line.match(/Display\s+(\d+)/);
+    if (displayMatch) {
+      currentDisplay = { displayNum: displayMatch[1], name: "" };
+      continue;
+    }
+
+    const nameMatch = line.match(/Monitor:\s+(.+)/);
+    if (nameMatch && currentDisplay) {
+      currentDisplay.name = nameMatch[1].trim();
+    }
+
+    const busMatch = line.match(/I2C bus:\s+\/dev\/i2c-(\d+)/);
+    if (busMatch && currentDisplay) {
+      monitors.push({
+        bus: busMatch[1],
+        name: currentDisplay.name || `Monitor ${currentDisplay.displayNum}`,
+        max: 100,
+      });
+      currentDisplay = null;
+    }
+  }
+
+  return monitors;
+}
+
+/**
+ * Kick off DDC monitor detection asynchronously. Idempotent: subsequent
+ * calls while the first is in flight share the same Promise; calls after
+ * completion are no-ops (the cache is already populated).
+ */
+function detectDDCMonitorsAsync(): Promise<void> {
+  if (ddcMonitorsCache !== null) return Promise.resolve();
+  if (ddcDetectionInFlight) return ddcDetectionInFlight;
+
+  ddcDetectionInFlight = runAsync([
+    "ddcutil",
+    "detect",
+    "--sleep-multiplier",
+    "0.1",
+  ]).then((stdout) => {
+    ddcMonitorsCache = stdout ? parseDdcutilDetect(stdout) : [];
+    ddcDetectionInFlight = null;
+  });
+
+  return ddcDetectionInFlight;
+}
 
 function getDDCMonitors(): BrightnessDevice[] {
-  // Return cached results or empty - don't block on detection
-  if (ddcMonitorsCache !== null) {
-    const devices: BrightnessDevice[] = [];
-    for (const monitor of ddcMonitorsCache) {
-      devices.push({
-        name: `ddcci-${monitor.bus}`,
-        displayName: monitor.name,
-        path: monitor.bus,
-        max: monitor.max,
-        current: 50, // Default to 50, will be updated by async call in widget
-        type: "ddcci",
-      });
-    }
-    return devices;
+  // Synchronous accessor: returns whatever's cached. If detection hasn't
+  // finished yet, we return [] — the user won't see DDC sliders this open,
+  // but the pre-warm at module-load means by the time the sidebar is first
+  // opened the cache is almost always populated. Worst case: re-open the
+  // sidebar once detection lands.
+  if (ddcMonitorsCache === null) {
+    detectDDCMonitorsAsync(); // fire-and-forget; populates cache
+    return [];
   }
 
-  // First time - detect monitors (blocking, but only happens once per session)
-  const monitors: Array<{ bus: string; name: string; max: number }> = [];
-
-  try {
-    const [success, stdout] = GLib.spawn_command_line_sync(
-      "ddcutil detect --sleep-multiplier 0.1",
-    );
-
-    if (success && stdout) {
-      const output = new TextDecoder().decode(stdout);
-      const lines = output.split("\n");
-
-      let currentDisplay: { displayNum: string; name: string } | null = null;
-
-      for (const line of lines) {
-        const displayMatch = line.match(/Display\s+(\d+)/);
-        if (displayMatch) {
-          currentDisplay = { displayNum: displayMatch[1], name: "" };
-          continue;
-        }
-
-        const nameMatch = line.match(/Monitor:\s+(.+)/);
-        if (nameMatch && currentDisplay) {
-          currentDisplay.name = nameMatch[1].trim();
-        }
-
-        const busMatch = line.match(/I2C bus:\s+\/dev\/i2c-(\d+)/);
-        if (busMatch && currentDisplay) {
-          monitors.push({
-            bus: busMatch[1],
-            name: currentDisplay.name || `Monitor ${currentDisplay.displayNum}`,
-            max: 100,
-          });
-          currentDisplay = null;
-        }
-      }
-    }
-  } catch (_e) {
-    // ddcutil not available or failed
-  }
-
-  ddcMonitorsCache = monitors;
   const devices: BrightnessDevice[] = [];
-
-  for (const monitor of monitors) {
-    // Start with cached max, brightness will be updated async
+  for (const monitor of ddcMonitorsCache) {
     devices.push({
       name: `ddcci-${monitor.bus}`,
       displayName: monitor.name,
       path: monitor.bus,
       max: monitor.max,
-      current: 50, // Default to 50, will be updated by async call in widget
+      current: 50, // updated by async getvcp in BrightnessSlider
       type: "ddcci",
     });
   }
-
   return devices;
 }
 
@@ -392,35 +442,33 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
   });
   container.add_controller(scrollController);
 
-  // Initial brightness fetch for DDC monitors (async)
+  // Initial brightness fetch for DDC monitors. Truly async via
+  // Gio.Subprocess — the previous implementation fired
+  // spawn_command_line_async (whose stdout was discarded), waited 500ms,
+  // then ran spawn_command_line_sync of the same command, blocking the
+  // GTK loop on `ddcutil getvcp`. This both wasted the first invocation
+  // and froze the UI on the second.
   if (device.type === "ddcci") {
-    GLib.spawn_command_line_async(
-      `ddcutil getvcp 10 --bus ${device.path} --brief --sleep-multiplier 0.1`,
-    );
-    // Read result asynchronously
-    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
-      try {
-        const [success, stdout] = GLib.spawn_command_line_sync(
-          `ddcutil getvcp 10 --bus ${device.path} --brief --sleep-multiplier 0.1`,
-        );
-        if (success && stdout) {
-          const output = new TextDecoder().decode(stdout);
-          const match = output.match(/VCP\s+10\s+\w+\s+(\d+)\s+(\d+)/);
-          if (match) {
-            const current = parseInt(match[1], 10);
-            const max = parseInt(match[2], 10);
-            if (!Number.isNaN(current) && !Number.isNaN(max)) {
-              isChanging = true;
-              scale.set_range(0, max);
-              scale.set_value(current);
-              isChanging = false;
-            }
-          }
-        }
-      } catch (_e) {
-        // Failed to get initial brightness
-      }
-      return false; // Don't repeat
+    runAsync([
+      "ddcutil",
+      "getvcp",
+      "10",
+      "--bus",
+      device.path,
+      "--brief",
+      "--sleep-multiplier",
+      "0.1",
+    ]).then((output) => {
+      if (!output) return;
+      const match = output.match(/VCP\s+10\s+\w+\s+(\d+)\s+(\d+)/);
+      if (!match) return;
+      const current = parseInt(match[1], 10);
+      const max = parseInt(match[2], 10);
+      if (Number.isNaN(current) || Number.isNaN(max)) return;
+      isChanging = true;
+      scale.set_range(0, max);
+      scale.set_value(current);
+      isChanging = false;
     });
   }
 
@@ -676,12 +724,16 @@ export function Sliders(): Gtk.Box {
   return container;
 }
 
-// Pre-warm DDC monitor detection cache in background on module load
-// This prevents the first sidebar open from being slow
+// Pre-warm DDC monitor detection cache in the background on module load.
+// `detectDDCMonitorsAsync` uses Gio.Subprocess so the ddcutil invocation
+// runs off-thread; the GTK main loop stays responsive even if ddcutil
+// itself takes seconds. By the time the user opens the sidebar the cache
+// is almost always populated, and DDC sliders appear without the first
+// open ever blocking on i2c probes. The previous implementation called
+// the synchronous detector from a 100ms timeout — that runs on the main
+// thread, so the freeze just moved from "first sidebar open" to "first
+// 100ms after launch". This actually fixes it.
 GLib.timeout_add(GLib.PRIORITY_LOW, 100, () => {
-  if (ddcMonitorsCache === null) {
-    // Trigger detection in background
-    getDDCMonitors();
-  }
+  detectDDCMonitorsAsync();
   return false; // Don't repeat
 });
