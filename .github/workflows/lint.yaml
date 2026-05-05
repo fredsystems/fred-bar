@@ -24,3 +24,29 @@ jobs:
 
       - name: Run flake pre-commit hooks
         run: nix develop -c pre-commit run --all-files
+
+      # =================================================================
+      # Verify the hardcoded vendorHash for the patched AGS package in
+      # flake.nix.
+      #
+      # We override AGS to `proxyVendor = false` so the FOD is now
+      # deterministic across machines (see the comment in flake.nix).
+      # The hash only changes when AGS's `cli/go.sum` actually changes
+      # — i.e. when upstream bumps a dep — but those changes are real
+      # and need a one-line update to flake.nix anyway.
+      #
+      # We force a rebuild without substituters so any drift surfaces
+      # on the PR rather than after merge. On failure, paste the `got:`
+      # value from the log into the `vendorHash = ...` line in flake.nix.
+      # =================================================================
+      - name: Verify patched AGS vendorHash
+        run: |
+          set -euo pipefail
+          # Build the patched AGS goModules FOD with substituters
+          # disabled. If the vendorHash in flake.nix has drifted from
+          # the actual Go module content, this fails with `got: <hash>`
+          # in the log — paste that into flake.nix's patchedAgs override.
+          nix build .#patched-ags.goModules \
+            --no-link -L \
+            --option substituters '' \
+            --option trusted-substituters ''

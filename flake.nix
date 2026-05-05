@@ -38,13 +38,24 @@
       systems = precommit.lib.supportedSystems;
       inherit (nixpkgs) lib;
 
-      # Upstream AGS has a stale vendorHash in nix/default.nix that doesn't
-      # match the actual Go module content. Override it with the correct hash
-      # until https://github.com/Aylur/ags/issues/797 is fixed upstream.
+      # Upstream AGS sets `proxyVendor = true` in its nix/default.nix.
+      # That makes the FOD output non-deterministic across machines:
+      # `go mod download` writes per-module `@v/list` files whose contents
+      # depend on whatever versions the Go module proxy happens to know
+      # about at fetch time. The result is a vendorHash that flaps
+      # between values depending on which runner builds first, breaking
+      # CI builds at random whenever the `ags` flake input is bumped.
+      #
+      # We override to `proxyVendor = false`, which makes Go produce a
+      # real `vendor/` tree (deterministic — strictly the modules listed
+      # in `cli/go.sum`). vendorHash below only needs updating when
+      # AGS's `cli/go.sum` actually changes, not at the whim of the
+      # Go proxy.
       patchedAgs =
         system:
         ags.packages.${system}.default.overrideAttrs (_: {
-          vendorHash = "sha256-yToSf/UFZhYpZKNf2Ocu8X1GH2NMzIwlg4GUvCNqoVM=";
+          proxyVendor = false;
+          vendorHash = "sha256-BHoVwiVMlbUzZHhgZIwg2vYKtJISJ01plNCqQctKb6I=";
         });
 
       fredbarAstalPackages = system: [
@@ -94,6 +105,11 @@
               cp -r config $out/share/fredbar/
             '';
           };
+
+          # Exposed so CI can rebuild it without substituters to verify
+          # the vendorHash override hasn't drifted. Not intended as a
+          # user-facing package.
+          patched-ags = patchedAgs system;
         }
       );
 
