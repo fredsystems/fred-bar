@@ -270,7 +270,7 @@ don't survive widget cleanup robustly. The rest of the codebase uses
 
 ## 2. Memory / performance
 
-### `[ ] C-2.1` `systemState` 250 ms churn
+### `[x] C-2.1` `systemState` 250 ms churn
 
 **File:** `config/right/system/state/modules/system.tsx:19`,
 consumer `config/right/system/state-pill.tsx`
