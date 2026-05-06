@@ -73,8 +73,13 @@ export function StatePill(): Gtk.Button {
       }
     }
 
-    // Toggle sidebar window using window manager
+    // Toggle sidebar window using window manager.
+    // Register this button as the sidebar's owner so the bar-level click gate
+    // (in app.tsx) can detect "click on the state-pill that owns the open
+    // sidebar" and skip dismissal — letting the toggle below close it instead
+    // of dismiss-then-reopen. Cheap; idempotent on repeat clicks.
     const sidebarName = `sidebar-${monitorIndex}`;
+    windowManager.setOwner(sidebarName, button);
     windowManager.toggle(sidebarName);
   });
 

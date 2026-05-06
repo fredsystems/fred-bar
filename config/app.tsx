@@ -12,6 +12,7 @@ import { NetworkPill } from "./right/network/network";
 import { VolumePill } from "./right/speaker-volume/volume";
 import { StatePill } from "./right/system/state-pill";
 import { TimePill } from "./right/time-pill/time-pill";
+import { getWindowManager } from "./services/window-manager";
 import { SidebarWindow } from "./sidebar/panel";
 import scss from "./styles/style.scss";
 
@@ -73,7 +74,7 @@ function Bar(monitorIndex: number): Gtk.Window {
           <VolumePill />
           <NetworkPill />
           <BatteryPill />
-          <TimePill />
+          <TimePill monitorIndex={monitorIndex} />
           <StatePill />
         </box>
       </centerbox>
@@ -84,6 +85,32 @@ function Bar(monitorIndex: number): Gtk.Window {
   window.connect("destroy", () => {
     recursiveCleanup(window.get_child());
   });
+
+  // Bar-level click gate (capture phase): any click anywhere inside the bar
+  // window dismisses the currently-open managed panel UNLESS the click target
+  // is inside the widget that owns that panel.
+  //
+  // Why capture phase: it runs before the target widget (e.g. a pill button)
+  // sees the press. We never mark the event handled, so the press still
+  // propagates to whatever widget is under the pointer — pills keep working
+  // normally, and clicks on bar empty-space simply trigger the dismiss
+  // without any other side effect.
+  //
+  // Why "skip if owner": clicking the pill that opened the panel must let
+  // the pill's own toggle handler close it. If we dismissed unconditionally,
+  // the pill's bubble-phase handler would see `visible=false` and re-open it
+  // (toggle paradox). The owner-skip puts the pill in charge of its own
+  // toggle and lets the gate handle every other case.
+  const wm = getWindowManager();
+  const barGate = new Gtk.GestureClick();
+  barGate.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
+  barGate.connect("pressed", (_gesture, _nPress, x, y) => {
+    if (!wm.getCurrentlyVisible()) return; // nothing to dismiss
+    const target = window.pick(x, y, Gtk.PickFlags.DEFAULT);
+    if (wm.isOwnerOfVisible(target)) return; // pill owns the panel — let it toggle
+    wm.hideAll();
+  });
+  window.add_controller(barGate);
 
   return window;
 }
