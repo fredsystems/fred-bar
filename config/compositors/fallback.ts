@@ -1,9 +1,12 @@
+import { createLogger } from "../helpers/logger";
 import type {
   CompositorAdapter,
   CompositorEventHandlers,
   CompositorWindow,
   CompositorWorkspace,
 } from "./types";
+
+const log = createLogger("FallbackAdapter");
 
 /**
  * Fallback compositor adapter
@@ -41,11 +44,11 @@ export class FallbackAdapter implements CompositorAdapter {
   }
 
   switchToWorkspace(_workspaceId: number): void {
-    console.warn("[FallbackAdapter] switchToWorkspace not supported");
+    log.warn("switchToWorkspace not supported");
   }
 
   focusWindow(_address: string): void {
-    console.warn("[FallbackAdapter] focusWindow not supported");
+    log.warn("focusWindow not supported");
   }
 
   connect(_handlers: CompositorEventHandlers): () => void {

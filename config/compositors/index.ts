@@ -1,9 +1,12 @@
 import GLib from "gi://GLib";
 import type Gtk from "gi://Gtk?version=4.0";
+import { createLogger } from "../helpers/logger";
 import { FallbackAdapter } from "./fallback";
 import { HyprlandAdapter } from "./hyprland";
 import { NiriAdapter } from "./niri";
 import type { CompositorAdapter } from "./types";
+
+const log = createLogger("Compositor");
 
 /**
  * Detect which compositor is currently running
@@ -44,8 +47,8 @@ function detectCompositor(): string {
 
   // If we're on Wayland but don't recognize the compositor
   if (waylandDisplay) {
-    console.warn(
-      `[Compositor] Running on Wayland (${waylandDisplay}) but compositor not recognized`,
+    log.warn(
+      `Running on Wayland (${waylandDisplay}) but compositor not recognized`,
     );
   }
 
@@ -58,18 +61,15 @@ function detectCompositor(): string {
 function createCompositorAdapter(compositorName?: string): CompositorAdapter {
   const name = compositorName ?? detectCompositor();
 
-  console.log(`[Compositor] Initializing adapter for: ${name}`);
+  log.info(`Initializing adapter for: ${name}`);
 
   switch (name) {
     case "hyprland":
       try {
         return new HyprlandAdapter();
       } catch (error) {
-        console.error(
-          "[Compositor] Failed to initialize Hyprland adapter:",
-          error,
-        );
-        console.warn("[Compositor] Falling back to fallback adapter");
+        log.error("Failed to initialize Hyprland adapter:", error);
+        log.warn("Falling back to fallback adapter");
         return new FallbackAdapter();
       }
 
@@ -77,15 +77,13 @@ function createCompositorAdapter(compositorName?: string): CompositorAdapter {
       try {
         return new NiriAdapter();
       } catch (error) {
-        console.error("[Compositor] Failed to initialize Niri adapter:", error);
-        console.warn("[Compositor] Falling back to fallback adapter");
+        log.error("Failed to initialize Niri adapter:", error);
+        log.warn("Falling back to fallback adapter");
         return new FallbackAdapter();
       }
     default:
       if (name !== "fallback") {
-        console.warn(
-          `[Compositor] Unknown compositor '${name}', using fallback adapter`,
-        );
+        log.warn(`Unknown compositor '${name}', using fallback adapter`);
       }
       return new FallbackAdapter();
   }
@@ -127,7 +125,7 @@ export function getMonitorConnectorName(widget: Gtk.Widget): string | null {
     const connector = monitor.get_connector?.();
     return connector || null;
   } catch (error) {
-    console.error("[Compositor] Failed to get monitor connector:", error);
+    log.error("Failed to get monitor connector:", error);
     return null;
   }
 }

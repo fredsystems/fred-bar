@@ -1,6 +1,9 @@
 import GLib from "gi://GLib";
 
+import { createLogger } from "helpers/logger";
 import { runAsync, spawnDetached } from "helpers/subprocess";
+
+const log = createLogger("VpnService");
 
 /**
  * Centralised VPN status service.
@@ -87,7 +90,7 @@ async function pollOnce(): Promise<void> {
         try {
           cb(current);
         } catch (e) {
-          console.error("[VpnService] listener error:", e);
+          log.error("listener error:", e);
         }
       }
     }

@@ -2,8 +2,11 @@
 
 import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
+import { createLogger } from "helpers/logger";
 import type { CalendarData, CalendarEvent } from "./calendar-service";
 import { getCalendarService } from "./calendar-service";
+
+const log = createLogger("CalendarView");
 
 /**
  * Catppuccin Mocha Color Palette (colorful colors only)
@@ -228,7 +231,7 @@ function applyCalendarColor(
       .get_style_context()
       .add_provider(cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER);
   } catch (error) {
-    console.error("Failed to apply CSS:", error);
+    log.error("Failed to apply CSS:", error);
   }
 }
 
@@ -248,7 +251,7 @@ function parseDateTime(isoString: string): GLib.DateTime | null {
       return utcDt.to_local();
     }
   } catch (error) {
-    console.error(`Failed to parse date: ${isoString}`, error);
+    log.error(`Failed to parse date: ${isoString}`, error);
   }
   return null;
 }

@@ -1,11 +1,14 @@
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
+import { createLogger } from "../helpers/logger";
 import type {
   CompositorAdapter,
   CompositorEventHandlers,
   CompositorWindow,
   CompositorWorkspace,
 } from "./types";
+
+const log = createLogger("NiriAdapter");
 
 /**
  * Workspace data from niri JSON output / event stream.
@@ -114,14 +117,14 @@ export class NiriAdapter implements CompositorAdapter {
         Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE,
       );
     } catch (error) {
-      console.error("[NiriAdapter] Failed to spawn event-stream:", error);
+      log.error("Failed to spawn event-stream:", error);
       this.scheduleReconnect();
       return;
     }
 
     const stdout = proc.get_stdout_pipe();
     if (!stdout) {
-      console.error("[NiriAdapter] event-stream subprocess has no stdout pipe");
+      log.error("event-stream subprocess has no stdout pipe");
       proc.force_exit();
       this.scheduleReconnect();
       return;
@@ -161,7 +164,7 @@ export class NiriAdapter implements CompositorAdapter {
         // Cancellation throws here during teardown; ignore. Anything else is
         // a genuine i/o error and we'll let wait_async drive the reconnect.
         if (cancel.is_cancelled()) return;
-        console.error("[NiriAdapter] read_line_async error:", err);
+        log.error("read_line_async error:", err);
         return;
       }
 
@@ -228,7 +231,7 @@ export class NiriAdapter implements CompositorAdapter {
     try {
       parsed = JSON.parse(line) as NiriEvent;
     } catch (err) {
-      console.error("[NiriAdapter] Bad event JSON:", err, line);
+      log.error("Bad event JSON:", err, line);
       return;
     }
 
@@ -319,7 +322,7 @@ export class NiriAdapter implements CompositorAdapter {
       const match = output.match(/Output "[^"]*" \(([^)]+)\)/);
       return match ? match[1] : null;
     } catch (error) {
-      console.error("[NiriAdapter] Failed to get focused output:", error);
+      log.error("Failed to get focused output:", error);
       return null;
     }
   }
@@ -401,7 +404,7 @@ export class NiriAdapter implements CompositorAdapter {
   switchToWorkspace(workspaceId: number): void {
     const ws = this.workspaces.get(workspaceId);
     if (!ws) {
-      console.warn(`[NiriAdapter] Workspace ID ${workspaceId} not found`);
+      log.warn(`Workspace ID ${workspaceId} not found`);
       return;
     }
     try {
@@ -409,7 +412,7 @@ export class NiriAdapter implements CompositorAdapter {
         `niri msg action focus-workspace ${ws.idx}`,
       );
     } catch (error) {
-      console.error("[NiriAdapter] Failed to switch workspace:", error);
+      log.error("Failed to switch workspace:", error);
     }
   }
 
@@ -419,7 +422,7 @@ export class NiriAdapter implements CompositorAdapter {
         `niri msg action focus-window --id ${address}`,
       );
     } catch (error) {
-      console.error("[NiriAdapter] Failed to focus window:", error);
+      log.error("Failed to focus window:", error);
     }
   }
 
