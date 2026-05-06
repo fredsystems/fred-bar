@@ -451,7 +451,24 @@ document which property is missed; if no, drop the poll.
 constant `tooltip` resolved once at construction. Tooltip-markup
 property changes at runtime are never reflected.
 
-**Fix:** `text: () => resolveTooltipMarkup(item)`.
+**Attempted fix (commit `66eb700`, REVERTED in `0987dc7`):** changed
+to `text: () => resolveTooltipMarkup(item) ?? ""` and dropped the
+`if (tooltip)` gate so every tray button got an `attachTooltip` call.
+This caused intermittent SIGSEGV on tray menu open with
+`GLib-CRITICAL: g_atomic_ref_count_dec: assertion 'old_value > 0'
+failed` and `Gtk-WARNING: While adding page: duplicate child name in
+GtkStack` (DBusMenu items: `Managed devices`, `_VPN Connections`).
+Hypothesis: the unconditional `Gtk.EventControllerMotion` added by
+`attachTooltip` (helpers/tooltip.tsx:146-148) interacts badly with
+`Gtk.PopoverMenu` children on the same button — motion enter/leave
+across the popover boundary triggers tooltip cleanup paths that
+race with the popover's internal stack pages.
+
+**Correct fix (TODO):** keep the `if (tooltip)` construction-time
+gate so items born without a tooltip never get a motion controller.
+Separately, hook `notify::tooltip-markup` / `notify::tooltip` on the
+`AstalTray.TrayItem` to re-invoke `attachTooltip` (or update via a
+property binding) when the underlying SNI emits a tooltip change.
 
 ---
 
@@ -503,7 +520,7 @@ universally.
 
 ---
 
-### `[ ] C-3.3` Monitor detection via undocumented `(root as { monitor?: number })`
+### `[x] C-3.3` Monitor detection via undocumented `(root as { monitor?: number })`
 
 **Files:** `config/center/workspaces.tsx:247`,
 `config/center/window-title.tsx:89`,
@@ -518,7 +535,7 @@ get_monitor_at_surface → get_connector`).
 
 ---
 
-### `[ ] C-3.4` `clockDrawingAreas.set(c.tzid, ...)` collides on `""`
+### `[x] C-3.4` `clockDrawingAreas.set(c.tzid, ...)` collides on `""`
 
 **File:** `config/right/time-pill/time-pill.tsx:259`
 
@@ -541,7 +558,7 @@ remain unavoidable, centralize in `config/helpers/gobject-cast.ts`.
 
 ---
 
-### `[ ] C-3.6` Direct `console.{log,error,warn}` everywhere
+### `[x] C-3.6` Direct `console.{log,error,warn}` everywhere
 
 **Pattern:** widespread.
 
