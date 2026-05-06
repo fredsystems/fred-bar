@@ -144,8 +144,16 @@ export function TimePill({
   popRoot.append(title);
   popRoot.append(clocksGrid);
 
-  const clockDrawingAreas = new Map<string, Gtk.DrawingArea>();
-  const clockBoxes = new Map<string, Gtk.Box>();
+  // Keyed by clock label (guaranteed unique in CLOCKS) rather than tzid:
+  // the local clock has tzid="" and any second empty-tzid entry would
+  // silently overwrite. Value bundles the area, box, and tzid together
+  // so the redraw loop has everything it needs without a parallel map.
+  type ClockEntry = {
+    area: Gtk.DrawingArea;
+    box: Gtk.Box;
+    tzid: string;
+  };
+  const clockEntries = new Map<string, ClockEntry>();
 
   let clockIndex = 0;
 
@@ -275,8 +283,7 @@ export function TimePill({
     const row = Math.floor(clockIndex / 3);
     clocksGrid.attach(line, col, row, 1, 1);
 
-    clockDrawingAreas.set(c.tzid, clockArea);
-    clockBoxes.set(c.tzid, line);
+    clockEntries.set(c.label, { area: clockArea, box: line, tzid: c.tzid });
 
     // Attach tooltip with live updates
     attachTooltip(line, {
@@ -414,21 +421,18 @@ export function TimePill({
 
     // Window clocks
     if (windowOpen) {
-      for (const [tzid, area] of clockDrawingAreas.entries()) {
+      for (const { area, box, tzid } of clockEntries.values()) {
         const dt = nowIn(tzid);
 
         // Apply day/night styling
-        const box = clockBoxes.get(tzid);
-        if (box && dt) {
+        if (dt) {
           box.remove_css_class("daytime");
           box.remove_css_class("nighttime");
           box.add_css_class(isDaytime(dt) ? "daytime" : "nighttime");
         }
 
         // Redraw the clock
-        if (area) {
-          area.queue_draw();
-        }
+        area.queue_draw();
       }
     }
   }
