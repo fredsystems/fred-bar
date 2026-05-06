@@ -9,19 +9,33 @@ class WindowManager {
   private currentlyVisible: string | null = null;
   private isUpdating = false; // Prevent recursive updates
   private deactivateCallbacks: Map<string, () => void> = new Map();
+  // Owner widget for each managed window. Used by the bar-level click gate to
+  // distinguish "click on the pill that owns the open panel" (let pill toggle
+  // close it) from "click somewhere else in the bar" (force-dismiss).
+  private owners: Map<string, Gtk.Widget> = new Map();
 
   /**
-   * Register a window to be managed
+   * Register a window to be managed.
+   *
+   * @param owner Optional widget that "owns" this window (e.g. the pill button
+   *   that opens it). When set, `isOwnerOfVisible` can detect whether a click
+   *   target is inside that owner's subtree, so the bar-level dismiss gate can
+   *   skip dismissal and let the owner's own toggle handler run.
    */
   public register(
     name: string,
     window: Gtk.Window,
     onDeactivate?: () => void,
+    owner?: Gtk.Widget,
   ): void {
     this.windows.set(name, window);
 
     if (onDeactivate) {
       this.deactivateCallbacks.set(name, onDeactivate);
+    }
+
+    if (owner) {
+      this.owners.set(name, owner);
     }
 
     // Connect to visibility changes to track state
@@ -42,6 +56,7 @@ class WindowManager {
   public unregister(name: string): void {
     this.windows.delete(name);
     this.deactivateCallbacks.delete(name);
+    this.owners.delete(name);
     if (this.currentlyVisible === name) {
       this.currentlyVisible = null;
     }
@@ -165,6 +180,40 @@ class WindowManager {
    */
   public getCurrentlyVisible(): string | null {
     return this.currentlyVisible;
+  }
+
+  /**
+   * Returns true if `widget` is the registered owner of the currently-visible
+   * window, or a descendant of it. Walks the parent chain via `get_parent()`.
+   * Used by the bar-level click gate to skip dismissal when the click target
+   * belongs to the pill that opened the open panel.
+   */
+  public isOwnerOfVisible(widget: Gtk.Widget | null): boolean {
+    if (!widget || !this.currentlyVisible) return false;
+    const owner = this.owners.get(this.currentlyVisible);
+    if (!owner) return false;
+
+    let node: Gtk.Widget | null = widget;
+    while (node) {
+      if (node === owner) return true;
+      node = node.get_parent();
+    }
+    return false;
+  }
+
+  /**
+   * Set the owner widget for an already-registered window. Useful when the
+   * window is registered in one place (e.g. sidebar/panel.tsx) but the owner
+   * widget (e.g. the state-pill button) is created elsewhere and only
+   * knowable later. Idempotent; overwrites any prior owner.
+   */
+  public setOwner(name: string, owner: Gtk.Widget): void {
+    if (!this.windows.has(name)) {
+      // Window not registered yet (or already unregistered); silently no-op.
+      // Caller is expected to call this after the window is registered.
+      return;
+    }
+    this.owners.set(name, owner);
   }
 
   /**

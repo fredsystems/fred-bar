@@ -31,8 +31,13 @@ function nowIn(tzid: string): GLib.DateTime | null {
   }
 }
 
-export function TimePill(): Gtk.Button {
+export function TimePill({
+  monitorIndex,
+}: {
+  monitorIndex: number;
+}): Gtk.Button {
   const windowManager = getWindowManager();
+  const windowName = `time-pill-calendar-${monitorIndex}`;
   let hovered = false;
   let expanded = false;
   let windowOpen = false;
@@ -88,13 +93,27 @@ export function TimePill(): Gtk.Button {
 
   const timeWindow = (
     <window
-      name="time-pill-calendar"
+      name={windowName}
       visible={false}
+      monitor={monitorIndex}
       anchor={TOP | RIGHT}
       class="time-window"
       exclusivity={Astal.Exclusivity.NORMAL}
       layer={Astal.Layer.OVERLAY}
-      keymode={Astal.Keymode.ON_DEMAND}
+      // Keymode.NONE (not ON_DEMAND). With ON_DEMAND, hyprland (or
+      // gtk4-layer-shell on its behalf) requests keyboard interactivity
+      // on map, which the compositor implements by transferring the
+      // implicit pointer grab to the new surface. The bar surface
+      // then receives `pointer.leave`, and subsequent clicks on the
+      // pill are not delivered to the button widget until the cursor
+      // moves again. With NONE, the calendar takes no keyboard
+      // interactivity, the bar keeps its pointer grab, and "click
+      // pill again to dismiss without moving the mouse" works.
+      // Trade-off: ESC-to-dismiss won't work via the window's own
+      // key controller. If we need ESC handling later, attach a
+      // global key-snooper on the application root rather than
+      // re-introducing keyboard interactivity on this window.
+      keymode={Astal.Keymode.NONE}
     />
   ) as unknown as Gtk.Window;
 
@@ -286,23 +305,31 @@ export function TimePill(): Gtk.Button {
 
   // Create backdrop window for click-outside-to-close
   const _backdrop = setupBackdrop(timeWindow, () => {
-    windowManager.hide("time-pill-calendar");
+    windowManager.hide(windowName);
   });
 
-  // Register with window manager and provide deactivation callback
-  windowManager.register("time-pill-calendar", timeWindow, () => {
-    // When another window opens, collapse the label if window isn't actually open
-    if (!windowOpen && expanded) {
-      applyExpanded(false);
-    }
-  });
+  // Register with window manager and provide deactivation callback.
+  // Owner = the pill button; lets the bar-level click gate detect "click on
+  // the pill that owns this open panel" and skip dismissal so the pill's own
+  // toggle handler can close it.
+  windowManager.register(
+    windowName,
+    timeWindow,
+    () => {
+      // When another window opens, collapse the label if window isn't actually open
+      if (!windowOpen && expanded) {
+        applyExpanded(false);
+      }
+    },
+    button,
+  );
 
   // Handle ESC key to close
   const keyController = new Gtk.EventControllerKey();
   keyController.connect("key-pressed", (_ctrl, keyval) => {
     if (keyval === 65307) {
       // ESC key
-      windowManager.hide("time-pill-calendar");
+      windowManager.hide(windowName);
       return true;
     }
     return false;
@@ -504,7 +531,7 @@ export function TimePill(): Gtk.Button {
   button.connect("clicked", () => {
     if (windowOpen) {
       windowOpen = false;
-      windowManager.hide("time-pill-calendar");
+      windowManager.hide(windowName);
       return;
     }
 
@@ -515,7 +542,7 @@ export function TimePill(): Gtk.Button {
     applyExpanded(true);
 
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-      windowManager.show("time-pill-calendar");
+      windowManager.show(windowName);
       updateLabels();
       return GLib.SOURCE_REMOVE;
     });

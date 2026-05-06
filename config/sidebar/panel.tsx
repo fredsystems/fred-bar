@@ -211,7 +211,16 @@ export function SidebarWindow(monitorIndex: number): Gtk.Window {
       default_width={0}
       exclusivity={Astal.Exclusivity.NORMAL}
       layer={Astal.Layer.OVERLAY}
-      keymode={Astal.Keymode.ON_DEMAND}
+      // Keymode.NONE (not ON_DEMAND). With ON_DEMAND, the compositor
+      // transfers the implicit pointer grab to the sidebar surface
+      // when it maps. The bar then receives `pointer.leave` and
+      // subsequent clicks on the state-pill (or any other bar pill)
+      // are not delivered to the button widget until the pointer
+      // moves again, breaking "click pill to dismiss". With NONE,
+      // the bar keeps its pointer grab. Trade-off: ESC won't dismiss
+      // via the window's own key controller; if needed later, use a
+      // global key-snooper on the application root.
+      keymode={Astal.Keymode.NONE}
     >
       <SidebarPanel />
     </window>
