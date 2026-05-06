@@ -5,6 +5,7 @@ import { Astal } from "ags/gtk4";
 import App from "ags/gtk4/app";
 
 import { WindowWorkspacesPill } from "./center/window-workspaces-pill";
+import { createLogger } from "./helpers/logger";
 import { SystemTray } from "./left/sys-tray/tray";
 import { PopupNotificationWindow } from "./notifications/popup-window";
 import { BatteryPill } from "./right/battery/battery";
@@ -15,6 +16,10 @@ import { TimePill } from "./right/time-pill/time-pill";
 import { getWindowManager } from "./services/window-manager";
 import { SidebarWindow } from "./sidebar/panel";
 import scss from "./styles/style.scss";
+
+const log = createLogger("App");
+
+log.info("fred-bar starting");
 
 App.reset_css();
 
@@ -32,7 +37,7 @@ function recursiveCleanup(widget: Gtk.Widget | null): void {
     try {
       cleanupWidget._cleanup();
     } catch (e) {
-      console.error("Error during widget cleanup:", e);
+      log.error("Error during widget cleanup:", e);
     }
   }
 

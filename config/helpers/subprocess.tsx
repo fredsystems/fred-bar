@@ -1,4 +1,7 @@
 import Gio from "gi://Gio";
+import { createLogger } from "./logger";
+
+const log = createLogger("Subprocess");
 
 /**
  * Run a shell command without blocking the GTK main loop and resolve with
@@ -49,6 +52,6 @@ export function spawnDetached(argv: string[]): void {
   try {
     Gio.Subprocess.new(argv, Gio.SubprocessFlags.NONE);
   } catch (e) {
-    console.error("spawnDetached failed:", argv.join(" "), e);
+    log.error("spawnDetached failed:", argv.join(" "), e);
   }
 }

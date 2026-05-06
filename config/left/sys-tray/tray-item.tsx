@@ -3,7 +3,10 @@ import Gdk from "gi://Gdk?version=4.0";
 import Gio from "gi://Gio";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
+import { createLogger } from "helpers/logger";
 import { attachTooltip } from "helpers/tooltip";
+
+const log = createLogger("Tray");
 
 type TrayItem = AstalTray.TrayItem;
 
@@ -47,7 +50,7 @@ function collectActionPrefixes(model: Gio.MenuModel): Set<string> {
   try {
     visit(model);
   } catch (err) {
-    console.warn("Tray menu prefix scan failed:", err);
+    log.warn("menu prefix scan failed:", err);
   }
   return prefixes;
 }
@@ -193,7 +196,7 @@ export function TrayItem(item: TrayItem): TrayButton {
 
       item.activate(0, 0);
     } catch (err) {
-      console.error("Tray activate failed:", err);
+      log.error("activate failed:", err);
     }
   });
 

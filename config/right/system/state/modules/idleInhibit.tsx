@@ -1,7 +1,10 @@
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import { createPoll } from "ags/time";
+import { createLogger } from "helpers/logger";
 import type { Severity, SystemSignal } from "../helpers/normalize";
+
+const log = createLogger("IdleInhibit");
 
 /* -----------------------------
  * Idle Inhibit Detection - D-Bus Integration
@@ -138,7 +141,7 @@ function getInhibitors(): Inhibitor[] {
 
     return inhibitors;
   } catch (error) {
-    console.error("Failed to query systemd-logind inhibitors:", error);
+    log.error("Failed to query systemd-logind inhibitors:", error);
     return [];
   }
 }

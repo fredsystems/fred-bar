@@ -2,7 +2,10 @@ import Wp from "gi://AstalWp";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { createLogger } from "helpers/logger";
 import { runAsync } from "helpers/subprocess";
+
+const log = createLogger("Sliders");
 
 const audio = Wp.get_default();
 
@@ -262,7 +265,7 @@ function setBrightness(
         `ddcutil setvcp 10 ${percentage} --bus ${busNum} --sleep-multiplier 0.1 --noverify`,
       );
     } catch (e) {
-      console.error("Failed to set DDC brightness:", e);
+      log.error("Failed to set DDC brightness:", e);
     }
     return;
   }
@@ -280,7 +283,7 @@ function setBrightness(
       const brightnessFile = `${devicePath}/brightness`;
       GLib.file_set_contents(brightnessFile, `${Math.round(value)}\n`);
     } catch (writeError) {
-      console.error("Failed to set brightness:", writeError);
+      log.error("Failed to set brightness:", writeError);
     }
   }
 }

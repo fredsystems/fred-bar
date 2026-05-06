@@ -3,6 +3,9 @@
 // Ensures only one popup window is visible at a time
 
 import type Gtk from "gi://Gtk?version=4.0";
+import { createLogger } from "helpers/logger";
+
+const log = createLogger("WindowManager");
 
 class WindowManager {
   private windows: Map<string, Gtk.Window> = new Map();
@@ -68,7 +71,7 @@ class WindowManager {
   public show(name: string): void {
     const window = this.windows.get(name);
     if (!window) {
-      console.warn(`Window ${name} not registered with WindowManager`);
+      log.warn(`Window ${name} not registered`);
       return;
     }
 
@@ -156,7 +159,7 @@ class WindowManager {
   public toggle(name: string): void {
     const window = this.windows.get(name);
     if (!window) {
-      console.warn(`Window ${name} not registered with WindowManager`);
+      log.warn(`Window ${name} not registered`);
       return;
     }
 

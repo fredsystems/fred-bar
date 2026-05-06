@@ -2,6 +2,9 @@
 
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
+import { createLogger } from "helpers/logger";
+
+const log = createLogger("CalendarService");
 
 const CALENDAR_API_BASE_URL = "http://localhost:5090/api";
 const RETRY_INTERVAL_MS = 60000; // 1 minute when API is unavailable
@@ -194,7 +197,7 @@ export class CalendarService {
   }
 
   private handleFetchError(message: string): void {
-    console.warn(`[CalendarService] ${message}`);
+    log.warn(message);
 
     if (this.isApiAvailable) {
       // API was available but failed - might be temporary
@@ -227,7 +230,7 @@ export class CalendarService {
       try {
         callback(this.data);
       } catch (error) {
-        console.error("[CalendarService] Error in callback:", error);
+        log.error("Error in callback:", error);
       }
     }
   }
