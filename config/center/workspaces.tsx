@@ -1,7 +1,7 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
-import { getCompositor } from "compositors";
+import { getCompositor, getMonitorConnectorName } from "compositors";
 import { resolveAppIcon } from "helpers/icon-resolver";
 
 /* -----------------------------
@@ -275,25 +275,12 @@ export function Workspaces(): Gtk.Box {
     }
   }
 
-  // Get monitor from the window's monitor property
+  // Resolve the monitor connector once the widget is realised. We use the
+  // documented GTK4 path via the shared helper instead of casting `root` to
+  // an undocumented Astal `monitor: number` property.
   box.connect("realize", () => {
-    const root = box.get_root();
-    if (!root) return;
-
-    const display = root.get_display();
-    if (!display) return;
-
-    const monitorProp = (root as unknown as { monitor?: number }).monitor;
-    if (monitorProp === undefined) return;
-
-    const monitors = display.get_monitors();
-    const monitor = monitors.get_item(monitorProp) as unknown as {
-      get_connector?: () => string;
-    } | null;
-    if (monitor) {
-      monitorName = monitor?.get_connector?.() || null;
-      render();
-    }
+    monitorName = getMonitorConnectorName(box);
+    if (monitorName) render();
   });
 
   render();

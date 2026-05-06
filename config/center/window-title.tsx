@@ -1,8 +1,11 @@
 import Gtk from "gi://Gtk?version=4.0";
 import Pango from "gi://Pango?version=1.0";
 
-import { getCompositor } from "compositors";
+import { getCompositor, getMonitorConnectorName } from "compositors";
 import { resolveAppIcon } from "helpers/icon-resolver";
+import { createLogger } from "helpers/logger";
+
+const log = createLogger("WindowTitle");
 
 export function WindowTitle(): Gtk.Box {
   const compositor = getCompositor();
@@ -69,37 +72,13 @@ export function WindowTitle(): Gtk.Box {
   box.append(image);
   box.append(label);
 
-  // Get monitor from the window's monitor property
-  // This is more reliable than surface detection
+  // Resolve the monitor connector once the widget is realised. We use the
+  // documented GTK4 path via the shared helper instead of casting `root` to
+  // an undocumented Astal `monitor: number` property.
   box.connect("realize", () => {
-    const root = box.get_root();
-    if (!root) {
-      console.warn("[WindowTitle] No root window found");
-      return;
-    }
-
-    // Get the window's assigned monitor
-    const display = root.get_display();
-    if (!display) {
-      console.warn("[WindowTitle] No display found");
-      return;
-    }
-
-    // Get monitor index from window property
-    const monitorProp = (root as unknown as { monitor?: number }).monitor;
-    if (monitorProp === undefined) {
-      console.warn("[WindowTitle] No monitor property on window");
-      return;
-    }
-
-    const monitors = display.get_monitors();
-    const monitor = monitors.get_item(monitorProp) as unknown as {
-      get_connector?: () => string;
-    } | null;
-    if (monitor) {
-      monitorName = monitor?.get_connector?.() || null;
-      update();
-    }
+    monitorName = getMonitorConnectorName(box);
+    if (monitorName) update();
+    else log.warn("Could not resolve monitor connector");
   });
 
   update();

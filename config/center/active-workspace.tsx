@@ -1,5 +1,5 @@
 import Gtk from "gi://Gtk?version=4.0";
-import { getCompositor } from "compositors";
+import { getCompositor, getMonitorConnectorName } from "compositors";
 
 export function ActiveWorkspace(): Gtk.Label {
   const compositor = getCompositor();
@@ -16,25 +16,13 @@ export function ActiveWorkspace(): Gtk.Label {
     label.set_label(workspace ? String(workspace.name || workspace.id) : "");
   }
 
-  // Get monitor from the window's monitor property
+  // Resolve the monitor connector once the widget is realised. We use the
+  // documented GTK4 path (get_native → get_surface → get_monitor_at_surface
+  // → get_connector) via the shared helper instead of casting `root` to an
+  // undocumented Astal `monitor: number` property.
   label.connect("realize", () => {
-    const root = label.get_root();
-    if (!root) return;
-
-    const display = root.get_display();
-    if (!display) return;
-
-    const monitorProp = (root as unknown as { monitor?: number }).monitor;
-    if (monitorProp === undefined) return;
-
-    const monitors = display.get_monitors();
-    const monitor = monitors.get_item(monitorProp) as unknown as {
-      get_connector?: () => string;
-    } | null;
-    if (monitor) {
-      monitorName = monitor?.get_connector?.() || null;
-      update();
-    }
+    monitorName = getMonitorConnectorName(label);
+    if (monitorName) update();
   });
 
   update();
