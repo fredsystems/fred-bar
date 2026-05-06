@@ -174,19 +174,15 @@ export function TrayItem(item: TrayItem): TrayButton {
   }) as TrayButton;
 
   /* ----------------------------------------------------------------
-   * Tooltip attachment
-   *
-   * Resolved dynamically per-query: tray items mutate their tooltip
-   * (DBusMenu items, NetworkManager applet, etc.) after construction,
-   * and capturing the value once at attach time silently went stale.
-   * `attachTooltip` no-ops when the resolver returns null/empty, so it
-   * is safe to attach unconditionally even for items that currently
-   * expose no tooltip.
+   * Tooltip attachment (NEW)
    * ---------------------------------------------------------------- */
-  attachTooltip(button, {
-    text: () => resolveTooltipMarkup(item) ?? "",
-    classes: () => ["tray"],
-  });
+  const tooltip = resolveTooltipMarkup(item);
+  if (tooltip) {
+    attachTooltip(button, {
+      text: () => tooltip,
+      classes: () => ["tray"],
+    });
+  }
 
   // PRIMARY CLICK
   button.connect("clicked", () => {
