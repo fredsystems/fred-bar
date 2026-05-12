@@ -1,7 +1,6 @@
 import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
-
-type CleanupWidget = Gtk.Widget & { _cleanup?: () => void };
+import { registerCleanup } from "./cleanup";
 
 interface TooltipOptions {
   text: () => string;
@@ -154,21 +153,18 @@ export function attachTooltip(anchor: Gtk.Widget, opts: TooltipOptions): void {
     }
   });
 
-  // Cleanup chaining
-  (anchor as CleanupWidget)._cleanup = (() => {
-    const prev = (anchor as CleanupWidget)._cleanup;
-    return () => {
-      cleanupTimeout();
-      anchor.disconnect(handlerId);
-      anchor.disconnect(tooltipNotifyHandler);
-      // Drop our cached refs so GC can reclaim the widgets once the
-      // GtkTooltip releases them. We don't unparent — the tooltip owns
-      // the tree after set_custom() and will tear it down on its own
-      // lifecycle when the anchor is destroyed.
-      cachedFrame = null;
-      cachedLabel = null;
-      cachedClasses = [];
-      prev?.();
-    };
-  })();
+  // Cleanup. registerCleanup chains multiple registrations on the same
+  // widget, so callers that registerCleanup() themselves still run after us.
+  registerCleanup(anchor, () => {
+    cleanupTimeout();
+    anchor.disconnect(handlerId);
+    anchor.disconnect(tooltipNotifyHandler);
+    // Drop our cached refs so GC can reclaim the widgets once the
+    // GtkTooltip releases them. We don't unparent — the tooltip owns
+    // the tree after set_custom() and will tear it down on its own
+    // lifecycle when the anchor is destroyed.
+    cachedFrame = null;
+    cachedLabel = null;
+    cachedClasses = [];
+  });
 }

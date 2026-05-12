@@ -1,5 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { registerCleanup } from "helpers/cleanup";
 import { resolveAppIcon, resolveNotificationIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
@@ -398,9 +399,9 @@ export function NotificationList(): Gtk.Box {
   const unsubscribe = notificationService.subscribe(update);
 
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(container, () => {
     unsubscribe();
-  };
+  });
 
   return container;
 }

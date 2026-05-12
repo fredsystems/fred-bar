@@ -7,6 +7,7 @@ import {
   createManualBackdrop,
   type TrayBackdropHandle,
 } from "helpers/backdrop";
+import { registerCleanup } from "helpers/cleanup";
 import { createLogger } from "helpers/logger";
 import { attachTooltip } from "helpers/tooltip";
 import { fetchMenuLayout } from "./dbusmenu";
@@ -312,12 +313,12 @@ export function TrayItem(item: TrayItem): TrayButton {
   button.add_controller(rightClick);
 
   // Cleanup for when SystemTray removes this widget.
-  button._cleanup = () => {
+  registerCleanup(button, () => {
     if (button._popover) {
       if (OPEN_POPOVER === button._popover) closeOpenTrayPopover();
       button._popover = null;
     }
-  };
+  });
 
   // GObject property binding avoids ref count issues with manual gicon updates.
   item.bind_property("gicon", image, "gicon", GObject.BindingFlags.SYNC_CREATE);

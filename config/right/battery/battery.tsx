@@ -1,5 +1,6 @@
 import Battery from "gi://AstalBattery";
 import Gtk from "gi://Gtk?version=4.0";
+import { registerCleanup } from "helpers/cleanup";
 
 import { attachTooltip } from "helpers/tooltip";
 
@@ -189,12 +190,12 @@ export function BatteryPill(): Gtk.Box {
    * Cleanup
    * ----------------------------- */
 
-  (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(box, () => {
     battery.disconnect(chargingHandler);
     battery.disconnect(energyHandler);
     battery.disconnect(stateHandler);
     battery.disconnect(presentHandler);
-  };
+  });
 
   return box;
 }

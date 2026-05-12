@@ -1,5 +1,6 @@
 import PowerProfiles from "gi://AstalPowerProfiles";
 import Gtk from "gi://Gtk?version=4.0";
+import { registerCleanup } from "helpers/cleanup";
 
 const powerProfiles = PowerProfiles.get_default();
 
@@ -95,9 +96,9 @@ export function PowerProfilesToggle(): Gtk.Box | null {
   );
 
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(container, () => {
     powerProfiles.disconnect(handler);
-  };
+  });
 
   return container;
 }

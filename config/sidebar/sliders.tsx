@@ -2,6 +2,7 @@ import Wp from "gi://AstalWp";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { registerCleanup } from "helpers/cleanup";
 import { createLogger } from "helpers/logger";
 import { runAsync } from "helpers/subprocess";
 
@@ -493,14 +494,14 @@ function BrightnessSlider(device: BrightnessDevice): Gtk.Box {
   }
 
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(container, () => {
     if (pollInterval !== null) {
       GLib.source_remove(pollInterval);
     }
     if (debounceTimeout !== null) {
       GLib.source_remove(debounceTimeout);
     }
-  };
+  });
 
   return container;
 }
@@ -637,10 +638,10 @@ function VolumeSlider(
   const muteHandler = endpoint.connect("notify::mute", updateDisplay);
 
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(container, () => {
     endpoint.disconnect(volumeHandler);
     endpoint.disconnect(muteHandler);
-  };
+  });
 
   return container;
 }

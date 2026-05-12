@@ -1,6 +1,7 @@
 import Mpris from "gi://AstalMpris";
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { registerCleanup } from "helpers/cleanup";
 import { attachTooltip } from "helpers/tooltip";
 
 const mpris = Mpris.get_default();
@@ -514,13 +515,13 @@ function PlayerWidget(initialPlayer: Mpris.Player): PlayerWidgetBox {
   };
 
   // Cleanup
-  container._cleanup = () => {
+  registerCleanup(container, () => {
     unbindPlayerSignals();
     if (positionPollId !== null) {
       GLib.source_remove(positionPollId);
       positionPollId = null;
     }
-  };
+  });
 
   return container;
 }
@@ -611,23 +612,19 @@ export function MediaPlayer(): Gtk.Box {
 
   schedulePlayerSwitchPoll();
 
-  // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  // Cleanup. Child PlayerWidget boxes are also _cleanup-bound (via
+  // registerCleanup), so destroying them via remove()/unparent() is enough
+  // — the destroy signal fires their own cleanups. We still walk children
+  // explicitly here because they may have been removed from this container
+  // before destroy fires (rebind path).
+  registerCleanup(container, () => {
     mpris.disconnect(addHandler);
     mpris.disconnect(removeHandler);
     if (playerSwitchPollId !== null) {
       GLib.source_remove(playerSwitchPollId);
       playerSwitchPollId = null;
     }
-
-    // Cleanup player widgets
-    let child = playerContainer.get_first_child();
-    while (child) {
-      const next = child.get_next_sibling();
-      (child as PlayerWidgetBox)._cleanup?.();
-      child = next;
-    }
-  };
+  });
 
   return container;
 }

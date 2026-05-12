@@ -1,5 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { registerCleanup } from "helpers/cleanup";
 import { attachTooltip } from "helpers/tooltip";
 import { notificationService } from "services/notifications";
 import { getWindowManager } from "services/window-manager";
@@ -175,9 +176,9 @@ export function StatePill(): Gtk.Button {
   });
 
   // Cleanup hook
-  (button as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(button, () => {
     unsubscribe();
-  };
+  });
 
   return button;
 }
