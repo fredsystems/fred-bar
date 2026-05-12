@@ -18,12 +18,39 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-function PlayerWidget(player: Mpris.Player): Gtk.Box {
+// Reject obviously-bogus track lengths.
+//
+// Some players (notably Firefox, web-based clients) advertise
+// `mpris:length = INT64_MAX` as a "length unknown" sentinel before they have
+// real metadata. After /1_000_000 that's ~9.22e12 seconds (~292 thousand
+// years) which is finite but useless: it briefly creates a slider that runs
+// for the heat-death of the universe. Anything over 24h is the sentinel.
+const MAX_REASONABLE_TRACK_SECONDS = 24 * 3600;
+function isUsableLength(length: number): boolean {
+  return (
+    Number.isFinite(length) &&
+    length > 0 &&
+    length < MAX_REASONABLE_TRACK_SECONDS
+  );
+}
+
+interface PlayerWidgetBox extends Gtk.Box {
+  _rebindTo?: (newPlayer: Mpris.Player) => void;
+  _currentPlayer?: Mpris.Player;
+  _cleanup?: () => void;
+}
+
+function PlayerWidget(initialPlayer: Mpris.Player): PlayerWidgetBox {
+  // Mutable holder so all closures resolve the *current* player at call time.
+  // This lets us rebind to a new player (e.g. Spotify -> Firefox) without
+  // tearing down and rebuilding all the widgets.
+  let currentPlayer: Mpris.Player = initialPlayer;
+
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 12,
     css_classes: ["media-player"],
-  });
+  }) as PlayerWidgetBox;
 
   // Artwork and metadata row
   const topRow = new Gtk.Box({
@@ -109,9 +136,9 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   dragController.connect("drag-end", () => {
     isManuallyDragging = false;
     const value = positionScale.get_value();
-    const length = player.length;
+    const length = currentPlayer.length;
     if (length > 0) {
-      player.set_position(value);
+      currentPlayer.set_position(value);
     }
   });
   positionScale.add_controller(dragController);
@@ -173,8 +200,8 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   const prevIcon = new Gtk.Label({ label: "󰒮" });
   prevBtn.set_child(prevIcon);
   prevBtn.connect("clicked", () => {
-    if (player.can_go_previous) {
-      player.previous();
+    if (currentPlayer.can_go_previous) {
+      currentPlayer.previous();
     }
   });
   attachTooltip(prevBtn, {
@@ -190,8 +217,8 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   const playPauseIcon = new Gtk.Label({ label: "󰐊" });
   playPauseBtn.set_child(playPauseIcon);
   playPauseBtn.connect("clicked", () => {
-    if (player.can_pause) {
-      player.play_pause();
+    if (currentPlayer.can_pause) {
+      currentPlayer.play_pause();
     }
   });
   attachTooltip(playPauseBtn, {
@@ -207,8 +234,8 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   const nextIcon = new Gtk.Label({ label: "󰒭" });
   nextBtn.set_child(nextIcon);
   nextBtn.connect("clicked", () => {
-    if (player.can_go_next) {
-      player.next();
+    if (currentPlayer.can_go_next) {
+      currentPlayer.next();
     }
   });
   attachTooltip(nextBtn, {
@@ -235,6 +262,7 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
 
   // Update function
   function updateMetadata(): void {
+    const player = currentPlayer;
     const title = player.title || "Unknown Title";
     const artist = player.artist || "";
     const album = player.album || "";
@@ -271,6 +299,7 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   }
 
   function updatePosition(): void {
+    const player = currentPlayer;
     // Get position - this seems to be working correctly
     const position = player.position ?? 0;
 
@@ -289,20 +318,57 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
         null,
       ) as {
         get_int64?: () => number;
+        print?: (type_annotate: boolean) => string;
       } | null;
       if (lengthVariant && typeof lengthVariant.get_int64 === "function") {
-        // Length is in microseconds, convert to seconds
-        length = lengthVariant.get_int64() / 1000000;
+        // Some players (Firefox, web clients) publish mpris:length = INT64_MAX
+        // as a "length unknown" sentinel. Calling get_int64() on that would
+        // trigger a GJS precision warning *before* we ever see the value, so
+        // sniff the raw printed representation first and only convert if the
+        // magnitude is reasonable.
+        let lengthMicros: number | null = null;
+        if (typeof lengthVariant.print === "function") {
+          const printed = lengthVariant.print(false);
+          // For 'x' (int64) variants the printed form is just the digits,
+          // possibly with a leading '-'. Parse via BigInt to avoid any JS
+          // Number-precision involvement until we know it's safe.
+          try {
+            const big = BigInt(printed);
+            // 24h in microseconds = 86_400 * 1_000_000 = 8.64e10, well within
+            // Number-safe range (2^53 ≈ 9e15). Anything beyond a day is the
+            // sentinel.
+            const maxMicros = BigInt(MAX_REASONABLE_TRACK_SECONDS) * 1_000_000n;
+            if (big > 0n && big < maxMicros) {
+              lengthMicros = Number(big);
+            }
+          } catch (_e) {
+            // Not parseable as a plain integer; fall through to get_int64.
+            lengthMicros = null;
+          }
+        }
+        // If print() wasn't available (unlikely) and we have a small variant
+        // anyway, fall back to get_int64. We only reach this when print() is
+        // missing, since a sentinel value above would have set
+        // lengthMicros = null and we'd skip the conversion entirely.
+        if (
+          lengthMicros === null &&
+          typeof lengthVariant.print !== "function"
+        ) {
+          lengthMicros = lengthVariant.get_int64();
+        }
+        if (lengthMicros !== null) {
+          length = lengthMicros / 1_000_000;
+        }
       }
     }
 
     // Fallback: try player.length (some players like Firefox don't provide metadata)
-    if (length <= 0 || !Number.isFinite(length)) {
+    if (!isUsableLength(length)) {
       length = player.length ?? 0;
     }
 
     // If we still don't have a valid length, hide the slider
-    if (length <= 0 || !Number.isFinite(length)) {
+    if (!isUsableLength(length)) {
       positionBox.visible = false;
       return;
     }
@@ -317,6 +383,7 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   }
 
   function updateControls(): void {
+    const player = currentPlayer;
     // Play/Pause
     if (player.playback_status === Mpris.PlaybackStatus.PLAYING) {
       playPauseIcon.label = "󰏤"; // Pause
@@ -376,20 +443,41 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   // Initial update
   update();
 
-  // Connect to player signals
-  const metadataHandler = player.connect("notify::title", update);
-  const metadataChangeHandler = player.connect("notify::metadata", () => {
-    update();
-    updatePosition();
-  });
-  const lengthHandler = player.connect("notify::length", updatePosition);
-  const positionHandler = player.connect("notify::position", updatePosition);
-  const statusHandler = player.connect(
-    "notify::playback-status",
-    updateControls,
-  );
-  const shuffleHandler = player.connect("notify::shuffle", updateControls);
-  const loopHandler = player.connect("notify::loop-status", updateControls);
+  // Connect to player signals.
+  // Tracked as [player, handlerId] pairs so we can disconnect on rebind/cleanup
+  // even after `currentPlayer` has been swapped.
+  let playerHandlers: Array<[Mpris.Player, number]> = [];
+
+  const bindPlayerSignals = (p: Mpris.Player): void => {
+    playerHandlers = [
+      [p, p.connect("notify::title", update)],
+      [
+        p,
+        p.connect("notify::metadata", () => {
+          update();
+          updatePosition();
+        }),
+      ],
+      [p, p.connect("notify::length", updatePosition)],
+      [p, p.connect("notify::position", updatePosition)],
+      [p, p.connect("notify::playback-status", updateControls)],
+      [p, p.connect("notify::shuffle", updateControls)],
+      [p, p.connect("notify::loop-status", updateControls)],
+    ];
+  };
+
+  const unbindPlayerSignals = (): void => {
+    for (const [p, handlerId] of playerHandlers) {
+      try {
+        p.disconnect(handlerId);
+      } catch (_e) {
+        // Player may already be gone; ignore.
+      }
+    }
+    playerHandlers = [];
+  };
+
+  bindPlayerSignals(currentPlayer);
 
   // Position polling (since position updates might not trigger notify).
   // Uses self-scheduling (SOURCE_REMOVE + manual reschedule) rather than
@@ -402,7 +490,7 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
   const schedulePositionPoll = () => {
     positionPollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
       positionPollId = null;
-      if (player.playback_status === Mpris.PlaybackStatus.PLAYING) {
+      if (currentPlayer.playback_status === Mpris.PlaybackStatus.PLAYING) {
         updatePosition();
       }
       schedulePositionPoll();
@@ -412,15 +500,22 @@ function PlayerWidget(player: Mpris.Player): Gtk.Box {
 
   schedulePositionPoll();
 
+  // Expose current player so the parent can detect identity changes.
+  container._currentPlayer = currentPlayer;
+
+  // Swap to a new player without rebuilding any widgets.
+  container._rebindTo = (newPlayer: Mpris.Player): void => {
+    if (newPlayer === currentPlayer) return;
+    unbindPlayerSignals();
+    currentPlayer = newPlayer;
+    container._currentPlayer = currentPlayer;
+    bindPlayerSignals(currentPlayer);
+    update();
+  };
+
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
-    player.disconnect(metadataHandler);
-    player.disconnect(metadataChangeHandler);
-    player.disconnect(lengthHandler);
-    player.disconnect(positionHandler);
-    player.disconnect(statusHandler);
-    player.disconnect(shuffleHandler);
-    player.disconnect(loopHandler);
+  container._cleanup = () => {
+    unbindPlayerSignals();
     if (positionPollId !== null) {
       GLib.source_remove(positionPollId);
       positionPollId = null;
@@ -444,31 +539,51 @@ export function MediaPlayer(): Gtk.Box {
   });
   container.append(playerContainer);
 
-  function update(): void {
-    // Clear existing
-    let child = playerContainer.get_first_child();
-    while (child) {
-      const next = child.get_next_sibling();
-      (child as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
-      playerContainer.remove(child);
-      child = next;
-    }
-
+  function pickActivePlayer(): Mpris.Player | null {
     const players = mpris.get_players();
+    if (players.length === 0) return null;
+    return (
+      players.find((p) => p.playback_status === Mpris.PlaybackStatus.PLAYING) ||
+      players[0]
+    );
+  }
 
-    if (players.length === 0) {
-      // Hide the entire widget when no media is playing
+  function update(): void {
+    const activePlayer = pickActivePlayer();
+
+    if (activePlayer === null) {
+      // Tear down any existing widget and hide.
+      let child = playerContainer.get_first_child();
+      while (child) {
+        const next = child.get_next_sibling();
+        (child as PlayerWidgetBox)._cleanup?.();
+        playerContainer.remove(child);
+        child = next;
+      }
       container.visible = false;
-    } else {
-      // Show the first active player (or just the first one)
-      const activePlayer =
-        players.find(
-          (p) => p.playback_status === Mpris.PlaybackStatus.PLAYING,
-        ) || players[0];
-
-      playerContainer.append(PlayerWidget(activePlayer));
-      container.visible = true;
+      return;
     }
+
+    const existing =
+      playerContainer.get_first_child() as PlayerWidgetBox | null;
+    if (existing) {
+      if (existing._currentPlayer === activePlayer) {
+        // Same player, nothing to do.
+        return;
+      }
+      // Different player: rebind in place to preserve widgets/animations.
+      if (existing._rebindTo) {
+        existing._rebindTo(activePlayer);
+        container.visible = true;
+        return;
+      }
+      // Fallback: tear down and rebuild (shouldn't happen).
+      existing._cleanup?.();
+      playerContainer.remove(existing);
+    }
+
+    playerContainer.append(PlayerWidget(activePlayer));
+    container.visible = true;
   }
 
   // Initial update
@@ -478,23 +593,17 @@ export function MediaPlayer(): Gtk.Box {
   const addHandler = mpris.connect("player-added", update);
   const removeHandler = mpris.connect("player-closed", update);
 
-  // Poll for active player changes (when switching between existing players).
+  // Poll for active player changes (when switching between existing players,
+  // since AstalMpris doesn't emit a signal for that).
+  // `update()` is now cheap when the active player is unchanged: it short-
+  // circuits on identity match and only rebinds (no widget rebuild) on swap.
   // Self-scheduling to avoid the GLib "catch-up cascade" after system sleep.
   let playerSwitchPollId: number | null = null;
 
   const schedulePlayerSwitchPoll = () => {
     playerSwitchPollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
       playerSwitchPollId = null;
-      const players = mpris.get_players();
-      if (players.length > 1) {
-        // Multiple players - check if active one changed
-        const activePlayer = players.find(
-          (p) => p.playback_status === Mpris.PlaybackStatus.PLAYING,
-        );
-        if (activePlayer) {
-          update(); // Rebuild widget for new active player
-        }
-      }
+      update();
       schedulePlayerSwitchPoll();
       return GLib.SOURCE_REMOVE;
     });
@@ -515,7 +624,7 @@ export function MediaPlayer(): Gtk.Box {
     let child = playerContainer.get_first_child();
     while (child) {
       const next = child.get_next_sibling();
-      (child as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
+      (child as PlayerWidgetBox)._cleanup?.();
       child = next;
     }
   };
