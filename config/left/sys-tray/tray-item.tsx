@@ -270,12 +270,83 @@ export function TrayItem(item: TrayItem): TrayButton {
 
   /* ----------------------------------------------------------------
    * Tooltip attachment
+   *
+   * Tooltip text on a SNI can be empty at construction (apps publish it
+   * after their main window is fully realised) or change over the
+   * item's lifetime (e.g. NetworkManager rewriting connection state).
+   *
+   * Strategy:
+   *   - If a tooltip is already present, attach immediately with a
+   *     resolver that re-reads the current value on every hover. The
+   *     `if (tooltip)` gate stays — we never add a motion controller to
+   *     a button that has no tooltip to show, because the controller has
+   *     subtle interactions with the GtkPopoverMenu we attach on click
+   *     (cf. AUDIT.md C-2.9, regression `66eb700` → `0987dc7`).
+   *   - If a tooltip is initially absent, listen for the first time the
+   *     SNI publishes one and attach then. Two properties may fire:
+   *     `tooltip-markup` (Astal-cooked, what resolveTooltipMarkup reads
+   *     first) and the unintrospectable `tooltip` struct. We watch both
+   *     and self-disarm once a tooltip resolves.
    * ---------------------------------------------------------------- */
-  const tooltip = resolveTooltipMarkup(item);
-  if (tooltip) {
+  const dynamicText = (): string => resolveTooltipMarkup(item) ?? "";
+
+  if (resolveTooltipMarkup(item)) {
     attachTooltip(button, {
-      text: () => tooltip,
+      text: dynamicText,
       classes: () => ["tray"],
+      updateInterval: 1000,
+    });
+  } else {
+    let attached = false;
+    let markupHandler: number | null = null;
+    let structHandler: number | null = null;
+
+    const tryAttach = (): void => {
+      if (attached) return;
+      if (resolveTooltipMarkup(item) === null) return;
+      attached = true;
+      attachTooltip(button, {
+        text: dynamicText,
+        classes: () => ["tray"],
+        updateInterval: 1000,
+      });
+      if (markupHandler !== null) item.disconnect(markupHandler);
+      if (structHandler !== null) item.disconnect(structHandler);
+      markupHandler = null;
+      structHandler = null;
+    };
+
+    try {
+      markupHandler = item.connect("notify::tooltip-markup", tryAttach);
+    } catch {
+      // Some SNI implementations don't expose the property; ignore.
+    }
+    try {
+      structHandler = item.connect("notify::tooltip", tryAttach);
+    } catch {
+      // ditto
+    }
+
+    // If the button is destroyed before a tooltip ever appears, drop the
+    // watchers so we don't leak signal handlers on the long-lived
+    // TrayItem.
+    registerCleanup(button, () => {
+      if (markupHandler !== null) {
+        try {
+          item.disconnect(markupHandler);
+        } catch {
+          // already disconnected by tryAttach
+        }
+        markupHandler = null;
+      }
+      if (structHandler !== null) {
+        try {
+          item.disconnect(structHandler);
+        } catch {
+          // already disconnected by tryAttach
+        }
+        structHandler = null;
+      }
     });
   }
 

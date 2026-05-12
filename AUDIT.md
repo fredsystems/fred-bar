@@ -557,7 +557,7 @@ document which property is missed; if no, drop the poll.
 
 ---
 
-### `[ ] C-2.9` Tray-item tooltip captured at construction
+### `[x] C-2.9` Tray-item tooltip captured at construction
 
 **File:** `config/left/sys-tray/tray-item.tsx:129-135`
 
