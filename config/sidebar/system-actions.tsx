@@ -1,10 +1,19 @@
+import GLib from "gi://GLib?version=2.0";
 import Gtk from "gi://Gtk?version=4.0";
 
 import { spawnDetached } from "helpers/subprocess";
 import { getCompositorExitCommand } from "services/compositor-detect";
 
 function getLogoutCommand(): string[] {
-  return getCompositorExitCommand() ?? ["loginctl", "terminate-user", "$USER"];
+  // Resolve the current user in-process: Gio.Subprocess never invokes a
+  // shell when given an argv, so "$USER" would be passed literally.
+  return (
+    getCompositorExitCommand() ?? [
+      "loginctl",
+      "terminate-user",
+      GLib.get_user_name(),
+    ]
+  );
 }
 
 function withCompositorExit(systemCommand: string[]): string[] {
