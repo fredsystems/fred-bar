@@ -1,5 +1,4 @@
 import Battery from "gi://AstalBattery";
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 
 import { attachTooltip } from "helpers/tooltip";
@@ -140,18 +139,17 @@ export function BatteryPill(): Gtk.Box {
   }
 
   update();
+  // UPower emits notify::* for every property change, and AstalBattery
+  // proxies those through to the GObject. Subscribing to the properties
+  // we actually display is sufficient to keep the widget in sync; the
+  // earlier 2-second poll was a cargo-culted workaround for a UPower
+  // notification gap that has not been observed on current systems.
+  // The tooltip callback re-evaluates on every hover, so dynamic values
+  // (time_to_empty, energy_rate) refresh naturally without polling.
   const chargingHandler = battery.connect("notify::charging", update);
   const energyHandler = battery.connect("notify::energy", update);
   const stateHandler = battery.connect("notify::state", update);
-
-  // Poll every 2 seconds to catch state changes that don't fire events.
-  // Use GLib.timeout_add directly (rather than ags' setInterval shim) so
-  // the source is GLib-priority-aware and survives suspend/resume cycles
-  // consistent with the rest of the bar's long-running pollers.
-  const pollInterval = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
-    update();
-    return GLib.SOURCE_CONTINUE;
-  });
+  const presentHandler = battery.connect("notify::is-present", update);
 
   /* -----------------------------
    * Tooltip (shares pill class)
@@ -195,7 +193,7 @@ export function BatteryPill(): Gtk.Box {
     battery.disconnect(chargingHandler);
     battery.disconnect(energyHandler);
     battery.disconnect(stateHandler);
-    GLib.Source.remove(pollInterval);
+    battery.disconnect(presentHandler);
   };
 
   return box;
