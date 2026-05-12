@@ -7,6 +7,11 @@ import App from "ags/gtk4/app";
 import { WindowWorkspacesPill } from "./center/window-workspaces-pill";
 import { createLogger } from "./helpers/logger";
 import { SystemTray } from "./left/sys-tray/tray";
+import {
+  closeOpenTrayPopover,
+  isInsideOpenTrayPopover,
+  isOwnerOfOpenTrayPopover,
+} from "./left/sys-tray/tray-item";
 import { PopupNotificationWindow } from "./notifications/popup-window";
 import { BatteryPill } from "./right/battery/battery";
 import { NetworkPill } from "./right/network/network";
@@ -110,8 +115,18 @@ function Bar(monitorIndex: number): Gtk.Window {
   const barGate = new Gtk.GestureClick();
   barGate.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
   barGate.connect("pressed", (_gesture, _nPress, x, y) => {
-    if (!wm.getCurrentlyVisible()) return; // nothing to dismiss
     const target = window.pick(x, y, Gtk.PickFlags.DEFAULT);
+
+    // Tray popovers run with autohide:false (so siblings can receive
+    // clicks). Close the open one unless the click landed inside it or
+    // on the tray button that owns it. Skipping owner clicks lets the
+    // button's own toggle handler decide whether to close-and-stop
+    // (same button) or close-and-reopen (different button).
+    if (!isInsideOpenTrayPopover(target) && !isOwnerOfOpenTrayPopover(target)) {
+      closeOpenTrayPopover();
+    }
+
+    if (!wm.getCurrentlyVisible()) return; // nothing else to dismiss
     if (wm.isOwnerOfVisible(target)) return; // pill owns the panel — let it toggle
     wm.hideAll();
   });

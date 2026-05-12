@@ -135,6 +135,14 @@ function buildSubmenuRow(
   busName: string,
   objectPath: string,
   rootClose: () => void,
+  /**
+   * Holder owned by the parent popover. We use it to enforce "only one
+   * submenu open per parent": when a submenu-row is clicked, it closes
+   * whatever submenu the parent is currently showing (if any) before
+   * opening its own. Set to `null` on close so subsequent clicks know
+   * there's no open submenu.
+   */
+  openChildHolder: { popover: Gtk.Popover | null; owner: Gtk.Widget | null },
 ): Gtk.Widget {
   const button = new Gtk.Button({
     css_classes: ["tray-menu-item", "tray-menu-submenu", "flat"],
@@ -158,6 +166,28 @@ function buildSubmenuRow(
 
   button.connect("clicked", () => {
     if (inFlight) return;
+
+    // Toggle: if our submenu is the one currently open, close it.
+    if (openChildHolder.owner === button && openChildHolder.popover) {
+      try {
+        openChildHolder.popover.popdown();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    // Replace: a different submenu is open — close it first.
+    if (openChildHolder.popover) {
+      try {
+        openChildHolder.popover.popdown();
+      } catch {
+        /* ignore */
+      }
+      openChildHolder.popover = null;
+      openChildHolder.owner = null;
+    }
+
     inFlight = true;
 
     fetchMenuLayout(busName, objectPath, node.id, -1)
@@ -173,8 +203,22 @@ function buildSubmenuRow(
         child.set_parent(button);
         child.set_position(Gtk.PositionType.RIGHT);
         child.set_has_arrow(false);
-        child.set_autohide(true);
+        // Submenus inherit autohide:false from buildPopoverFromNode. Taking
+        // a Wayland popup grab here would consume clicks on sibling tray
+        // buttons (the click would arrive as popup_done on the submenu's
+        // surface, never reaching the other tray button). Outside-the-submenu
+        // dismissal is driven instead by:
+        //   - bar-level capture gate in app.tsx (clicks on the bar)
+        //   - rootClose chain from leaf-row activation (closes ancestors)
+        //   - the parent popover's openChildHolder (clicking another
+        //     submenu-row in the parent closes this one)
+        openChildHolder.popover = child;
+        openChildHolder.owner = button;
         child.connect("closed", () => {
+          if (openChildHolder.popover === child) {
+            openChildHolder.popover = null;
+            openChildHolder.owner = null;
+          }
           GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             try {
               child.unparent();
@@ -204,11 +248,25 @@ function buildPopoverFromNode(
   objectPath: string,
   rootClose: () => void,
 ): Gtk.Popover {
+  // autohide:false on the root popover so it doesn't take a Wayland popup
+  // grab. With a grab, clicking another tray icon while this menu is open
+  // sends `popup_done` to this surface and *consumes* the click — the second
+  // tray button never sees the press. With autohide:false, the click reaches
+  // the bar normally, and `tray-item.tsx` / bar-level handlers close the
+  // open popover and open the new one. Submenus also inherit this so they
+  // don't shadow sibling tray buttons either.
   const popover = new Gtk.Popover({
     has_arrow: false,
-    autohide: true,
+    autohide: false,
     css_classes: ["tray-menu"],
   });
+
+  // Each popover owns one "open submenu" slot. Submenu rows mutate this to
+  // enforce single-open-per-parent without a Wayland grab. See buildSubmenuRow.
+  const openChildHolder: {
+    popover: Gtk.Popover | null;
+    owner: Gtk.Widget | null;
+  } = { popover: null, owner: null };
 
   const box = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -230,7 +288,9 @@ function buildPopoverFromNode(
     }
 
     if (child.hasSubmenu) {
-      box.append(buildSubmenuRow(child, busName, objectPath, rootClose));
+      box.append(
+        buildSubmenuRow(child, busName, objectPath, rootClose, openChildHolder),
+      );
     } else {
       box.append(buildLeafRow(child, busName, objectPath, rootClose));
     }

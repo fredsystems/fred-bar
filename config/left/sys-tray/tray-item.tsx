@@ -17,32 +17,62 @@ type TrayButton = Gtk.Button & {
   _cleanup?: () => void;
 };
 
-// ---- Global "only one popover open" state ----
+/* ------------------------------------------------------------------
+ * Single-open invariant
+ * ------------------------------------------------------------------
+ * Only one tray popover may be visible at a time. We track it in a
+ * module-global because Wayland popup grabs don't help us here: with
+ * autohide:false (see menu.tsx), the root popover doesn't auto-close on
+ * outside click, so we close it ourselves whenever:
+ *
+ *   1. The user clicks another tray button (handled here).
+ *   2. The user clicks elsewhere on the bar (handled by the bar-level
+ *      capture-phase controller in app.tsx via `closeOpenTrayPopover`).
+ *   3. ESC is pressed while the popover has focus (handled by the
+ *      Gtk.EventControllerKey installed below on each popover).
+ * ------------------------------------------------------------------ */
 let OPEN_POPOVER: Gtk.Popover | null = null;
+let OPEN_OWNER: Gtk.Widget | null = null;
 
-function closeOpenPopover(): void {
+/** Close whatever tray popover is currently open. No-op if none. */
+export function closeOpenTrayPopover(): void {
   if (!OPEN_POPOVER) return;
-
   try {
     OPEN_POPOVER.popdown();
   } catch {
-    // ignore
+    /* ignore */
   }
-
   OPEN_POPOVER = null;
+  OPEN_OWNER = null;
+}
+
+/** Whether `target` is a descendant of the currently-open tray popover. */
+export function isInsideOpenTrayPopover(target: Gtk.Widget | null): boolean {
+  if (!OPEN_POPOVER || !target) return false;
+  let w: Gtk.Widget | null = target;
+  while (w) {
+    if (w === OPEN_POPOVER) return true;
+    w = w.get_parent();
+  }
+  return false;
+}
+
+/** Whether `target` is the tray button that owns the currently-open popover. */
+export function isOwnerOfOpenTrayPopover(target: Gtk.Widget | null): boolean {
+  if (!OPEN_OWNER || !target) return false;
+  let w: Gtk.Widget | null = target;
+  while (w) {
+    if (w === OPEN_OWNER) return true;
+    w = w.get_parent();
+  }
+  return false;
 }
 
 /**
  * Recover the tray app's well-known D-Bus name from `item.item_id`.
  *
  * AstalTray composes `item_id = service + object_path` where `object_path`
- * starts with `/` (e.g. `org.kde.StatusNotifierItem-1234-1/StatusNotifierItem`).
- * Splitting on the first `/` gives us the bus name.
- *
- * We can't use the well-known-vs-unique-name distinction from AstalTray
- * (which uses `proxy.g_name_owner`, the unique `:1.NN` name) — that's not
- * exposed in the gir. The well-known name is fine: D-Bus routes to the
- * current owner automatically.
+ * starts with `/`. Splitting on the first `/` gives us the bus name.
  */
 function busNameFromItemId(itemId: string): string | null {
   const slash = itemId.indexOf("/");
@@ -52,26 +82,21 @@ function busNameFromItemId(itemId: string): string | null {
 
 /** Read the unintrospectable `menu_path` property at runtime. */
 function menuObjectPath(item: TrayItem): string | null {
-  // `menu_path` is typed `never` in the gir because it's `ObjectPath`, but
-  // at runtime it's a plain string (or null). Cast through `unknown`.
   const raw = (item as unknown as { menu_path?: string | null }).menu_path;
   return typeof raw === "string" && raw.startsWith("/") ? raw : null;
 }
 
 /**
  * Open the tray menu for `item`. Fetches layout over D-Bus, builds the
- * popover, and pops it up.
- *
- * Fetching is async (~ms over the session bus), so the popover appears
- * slightly after the click. We intentionally don't pre-fetch: the freshest
- * layout is the one the user expects.
+ * popover, and pops it up. Fetching is async (~ms); we close any
+ * already-open popover first, then again right before showing (in case
+ * another opened during the fetch window).
  */
 function popupMenu(button: TrayButton, item: TrayItem): void {
-  closeOpenPopover();
+  closeOpenTrayPopover();
 
   const busName = busNameFromItemId(item.item_id);
   const objectPath = menuObjectPath(item);
-
   if (!busName || !objectPath) {
     log.debug(`no dbusmenu coordinates for ${item.item_id}`);
     return;
@@ -80,11 +105,7 @@ function popupMenu(button: TrayButton, item: TrayItem): void {
   fetchMenuLayout(busName, objectPath)
     .then((root) => {
       if (!root) return;
-
-      // If the user clicked elsewhere while we were fetching, another popover
-      // may have opened. Close it first so we maintain the single-open
-      // invariant.
-      closeOpenPopover();
+      closeOpenTrayPopover();
 
       let popover: Gtk.Popover;
       try {
@@ -97,11 +118,26 @@ function popupMenu(button: TrayButton, item: TrayItem): void {
       popover.set_parent(button);
       popover.set_position(Gtk.PositionType.BOTTOM);
 
-      // Defer unparent to idle: `closed` is emitted from inside GTK's hide
-      // / grab-release path, so mutating the widget tree synchronously here
-      // can reenter under rapid open/close.
+      // ESC dismissal — replaces the keyboard escape that autohide:true
+      // would have given us for free.
+      const keyCtrl = new Gtk.EventControllerKey();
+      keyCtrl.connect("key-pressed", (_c, keyval) => {
+        if (keyval === Gdk.KEY_Escape) {
+          closeOpenTrayPopover();
+          return true;
+        }
+        return false;
+      });
+      popover.add_controller(keyCtrl);
+
+      // Defer unparent to idle: `closed` fires from inside GTK's hide path,
+      // so mutating the widget tree synchronously here can reenter under
+      // rapid open/close.
       popover.connect("closed", () => {
-        if (OPEN_POPOVER === popover) OPEN_POPOVER = null;
+        if (OPEN_POPOVER === popover) {
+          OPEN_POPOVER = null;
+          OPEN_OWNER = null;
+        }
         if (button._popover === popover) button._popover = null;
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
           try {
@@ -115,6 +151,7 @@ function popupMenu(button: TrayButton, item: TrayItem): void {
 
       button._popover = popover;
       OPEN_POPOVER = popover;
+      OPEN_OWNER = button;
       popover.popup();
     })
     .catch((err: unknown) => {
@@ -126,7 +163,6 @@ function popupMenu(button: TrayButton, item: TrayItem): void {
  * Tooltip resolution (markup-aware)
  * ------------------------------------------------------------------ */
 function resolveTooltipMarkup(item: AstalTray.TrayItem): string | null {
-  // 1️⃣ Explicit markup string
   if (
     typeof item.tooltip_markup === "string" &&
     item.tooltip_markup.length > 0
@@ -134,29 +170,24 @@ function resolveTooltipMarkup(item: AstalTray.TrayItem): string | null {
     return item.tooltip_markup;
   }
 
-  // 2️⃣ Boxed tooltip object (Discord, 1Password, etc.)
   const tooltipObj = item.tooltip as unknown;
   if (tooltipObj && typeof tooltipObj === "object") {
     const anyTooltip = tooltipObj as {
       text?: string;
       markup?: string;
     };
-
     if (typeof anyTooltip.markup === "string" && anyTooltip.markup.length > 0) {
       return anyTooltip.markup;
     }
-
     if (typeof anyTooltip.text === "string" && anyTooltip.text.length > 0) {
       return anyTooltip.text;
     }
   }
 
-  // 3️⃣ Title (udiskie, nm-applet)
   if (typeof item.title === "string" && item.title.length > 0) {
     return item.title;
   }
 
-  // 4️⃣ Fallback
   if (typeof item.id === "string" && item.id.length > 0) {
     return item.id;
   }
@@ -189,42 +220,46 @@ export function TrayItem(item: TrayItem): TrayButton {
 
   // PRIMARY CLICK
   button.connect("clicked", () => {
-    closeOpenPopover();
-
     try {
-      if (item.category !== AstalTray.Category.APPLICATION) {
-        popupMenu(button, item);
+      if (item.category === AstalTray.Category.APPLICATION) {
+        closeOpenTrayPopover();
+        item.activate(0, 0);
         return;
       }
 
-      item.activate(0, 0);
+      // Toggle: if our own popover is the one open, just close it.
+      if (button._popover && OPEN_POPOVER === button._popover) {
+        closeOpenTrayPopover();
+        return;
+      }
+
+      popupMenu(button, item);
     } catch (err) {
       log.error("activate failed:", err);
     }
   });
 
-  // SECONDARY CLICK: open menu
+  // SECONDARY CLICK: open menu (with same toggle semantics for non-app items)
   const rightClick = new Gtk.GestureClick();
   rightClick.set_button(Gdk.BUTTON_SECONDARY);
-
   rightClick.connect("released", () => {
-    closeOpenPopover();
+    if (button._popover && OPEN_POPOVER === button._popover) {
+      closeOpenTrayPopover();
+      return;
+    }
     popupMenu(button, item);
   });
-
   button.add_controller(rightClick);
 
-  // Cleanup for when SystemTray removes this widget. The popover is normally
-  // unparented on idle from its own `closed` handler; here we handle the
-  // edge case of the tray item being removed while its menu is still open.
+  // Cleanup for when SystemTray removes this widget.
   button._cleanup = () => {
     if (button._popover) {
-      if (OPEN_POPOVER === button._popover) closeOpenPopover();
+      if (OPEN_POPOVER === button._popover) closeOpenTrayPopover();
       button._popover = null;
     }
   };
 
-  // Use GObject property binding to avoid ref count issues with manual updates
+  // GObject property binding avoids ref count issues with manual gicon updates.
   item.bind_property("gicon", image, "gicon", GObject.BindingFlags.SYNC_CREATE);
 
   return button;
