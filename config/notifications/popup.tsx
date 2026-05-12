@@ -1,4 +1,3 @@
-import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
 import { getCompositor } from "compositors";
 import { resolveNotificationIcon } from "helpers/icon-resolver";
@@ -6,74 +5,31 @@ import {
   type NotificationData,
   notificationService,
 } from "services/notifications";
-
-const POPUP_TIMEOUT = 10000; // 10 seconds
-const PROGRESS_TICK_MS = 100; // shared scheduler cadence
+import {
+  addPopupGlobal,
+  getLivePopups,
+  livePopupCount,
+  removePopupGlobal,
+  subscribePopups,
+} from "./popup-state";
 
 /* -----------------------------
- * Shared progress scheduler
+ * Presentation: a single popup row
  *
- * One GLib source ticks every PROGRESS_TICK_MS and drives every live popup's
- * progress bar. Previously each PopupNotification spawned its own 50ms timer,
- * meaning N monitors × M popups × 20Hz wakeups. Now: a single 10Hz source for
- * the whole app, regardless of popup count.
+ * Pure presentation — no signal subscriptions, no timers, no per-row state
+ * beyond what's needed to update the progress bar. The row is owned by
+ * popup-state's livePopups map and reparented across per-monitor views.
  * ----------------------------- */
 
-interface SharedPopupEntry {
-  startTime: number; // GLib.get_monotonic_time() in microseconds
+interface PopupNotificationRowResult {
+  widget: Gtk.Box;
   progress: Gtk.ProgressBar;
-  onTimeout: () => void;
+  cleanup: () => void;
 }
 
-const sharedPopups = new Set<SharedPopupEntry>();
-let sharedTimerId: number | null = null;
-
-function ensureSharedTimer(): void {
-  if (sharedTimerId !== null) return;
-  sharedTimerId = GLib.timeout_add(
-    GLib.PRIORITY_DEFAULT,
-    PROGRESS_TICK_MS,
-    () => {
-      // Iterate over a snapshot so onTimeout handlers can mutate the set.
-      const snapshot = Array.from(sharedPopups);
-      const now = GLib.get_monotonic_time();
-      for (const entry of snapshot) {
-        const elapsed = (now - entry.startTime) / 1000; // µs → ms
-        const remaining = Math.max(0, POPUP_TIMEOUT - elapsed);
-        entry.progress.fraction = remaining / POPUP_TIMEOUT;
-        if (remaining <= 0) {
-          sharedPopups.delete(entry);
-          entry.onTimeout();
-        }
-      }
-      if (sharedPopups.size === 0) {
-        sharedTimerId = null;
-        return GLib.SOURCE_REMOVE;
-      }
-      return GLib.SOURCE_CONTINUE;
-    },
-  );
-}
-
-function registerPopupProgress(entry: SharedPopupEntry): void {
-  sharedPopups.add(entry);
-  ensureSharedTimer();
-}
-
-function unregisterPopupProgress(entry: SharedPopupEntry): void {
-  sharedPopups.delete(entry);
-  // Timer is self-cancelling once the set empties; no need to remove here.
-}
-
-interface PopupNotificationProps {
-  notification: NotificationData;
-  onDismiss: () => void;
-  onTimeout: () => void;
-}
-
-function PopupNotification(props: PopupNotificationProps): Gtk.Box {
-  const { notification, onDismiss, onTimeout } = props;
-
+function PopupNotificationRow(
+  notification: NotificationData,
+): PopupNotificationRowResult {
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 0,
@@ -95,26 +51,23 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     css_classes: ["popup-header"],
   });
 
-  // Notification icon - prioritize custom image, then app icon, fallback to bell
+  // Notification icon — prioritize custom image, then app icon, fallback bell.
   const notifIcon = resolveNotificationIcon(
     notification.image,
     notification.appIcon,
     notification.appName,
   );
   let iconWidget: Gtk.Widget;
-
   if (notifIcon) {
     const iconImage = Gtk.Image.new_from_gicon(notifIcon);
     iconImage.set_pixel_size(24);
     iconImage.set_css_classes(["popup-icon"]);
     iconWidget = iconImage;
   } else {
-    // Fallback to bell icon
-    const iconLabel = new Gtk.Label({
+    iconWidget = new Gtk.Label({
       label: "󰂚",
       css_classes: ["popup-icon"],
     });
-    iconWidget = iconLabel;
   }
   header.append(iconWidget);
 
@@ -134,9 +87,9 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     css_classes: ["popup-close"],
     valign: Gtk.Align.START,
   });
-  closeBtn.connect("clicked", () => {
+  const closeHandler = closeBtn.connect("clicked", () => {
     notificationService.dismissDuringPopup(notification.id);
-    onDismiss();
+    removePopupGlobal(notification.id);
   });
   header.append(closeBtn);
 
@@ -173,38 +126,40 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
     body.append(bodyLabel);
   }
 
-  // Progress bar for timeout (inside body)
+  // Progress bar — fraction is updated by the shared timer in popup-state.
   const progress = new Gtk.ProgressBar({
     css_classes: ["popup-progress"],
     fraction: 1.0,
   });
   body.append(progress);
-
   container.append(body);
 
-  // Timeout animation — driven by the shared scheduler.
-  const entry: SharedPopupEntry = {
-    startTime: GLib.get_monotonic_time(),
-    progress,
-    onTimeout,
-  };
-  registerPopupProgress(entry);
-
-  // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
-    unregisterPopupProgress(entry);
+  const cleanup = (): void => {
+    try {
+      closeBtn.disconnect(closeHandler);
+    } catch (_e) {
+      // Button may already be unrealised; ignore.
+    }
   };
 
-  return container;
+  return { widget: container, progress, cleanup };
 }
+
+/* -----------------------------
+ * Per-monitor view
+ *
+ * Subscribes to (a) the compositor's focused-monitor (via the existing
+ * onFocusedWorkspaceChanged event which fires on focus-follows-mouse in
+ * Hyprland and on workspace changes in niri) and (b) the global popup
+ * state. When this monitor is focused, it (re)parents every live row into
+ * itself; when it loses focus, it detaches them and the next-focused
+ * monitor's view picks them up.
+ * ----------------------------- */
 
 interface PopupNotificationContainerProps {
   /**
    * Connector name of the monitor this container lives on (e.g. "DP-2").
-   * Used to gate popup creation to the focused monitor only.
-   * Resolved lazily by the caller — typically via `getMonitorConnectorName`
-   * once the parent window is realised. If null, the container accepts
-   * popups unconditionally (fallback: no focused-monitor info available).
+   * Used to decide whether this view should display popups.
    */
   getMonitorConnector?: () => string | null;
   onEmpty?: () => void;
@@ -215,119 +170,208 @@ export function PopupNotificationContainer(
   props?: PopupNotificationContainerProps,
 ): Gtk.Box {
   const compositor = getCompositor();
+
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 8,
     css_classes: ["popup-notification-container"],
   });
 
-  const popups = new Map<number, Gtk.Widget>();
-  // Track currently-shown popup id per (appName + syncTag) so a follow-up
-  // notification with the same tag replaces the existing popup instead of
-  // stacking. This is what makes volume / brightness OSDs feel right.
-  const syncTagToId = new Map<string, number>();
+  let isFocused = false;
+  let lastEmpty = true;
 
-  function syncKey(appName: string, tag: string): string {
-    return `${appName}\x00${tag}`;
-  }
+  const ownConnector = (): string | null =>
+    props?.getMonitorConnector?.() ?? null;
 
-  function checkAndNotify(): void {
-    if (popups.size === 0) {
+  const isOwnerOfFocus = (): boolean => {
+    const own = ownConnector();
+    const focused = compositor.getFocusedMonitor();
+    // If either side is unknown, fall through: best-effort show.
+    // This covers the fallback compositor and pre-bootstrap startup.
+    if (own === null || focused === null) return true;
+    return own === focused;
+  };
+
+  // Detach every row currently parented into this container (without
+  // destroying the widget — popup-state still owns it).
+  const detachAll = (): void => {
+    let child = container.get_first_child();
+    while (child) {
+      const next = child.get_next_sibling();
+      container.remove(child);
+      child = next;
+    }
+  };
+
+  // (Re)parent live rows from popup-state into this container, in the
+  // order popup-state reports them. If a row is currently parented in
+  // another monitor's view, unparent it first.
+  const attachAll = (): void => {
+    const popups = getLivePopups();
+    // First: remove any child we hold that isn't in the live set anymore.
+    const liveIds = new Set(popups.map((p) => p.id));
+    let child = container.get_first_child();
+    while (child) {
+      const next = child.get_next_sibling();
+      const id = (child as Gtk.Widget & { _popupId?: number })._popupId;
+      if (id === undefined || !liveIds.has(id)) {
+        container.remove(child);
+      }
+      child = next;
+    }
+    // Then: append any live popup not already in this container, in order.
+    for (const p of popups) {
+      const currentParent = p.widget.get_parent();
+      if (currentParent === container) continue;
+      if (currentParent) {
+        try {
+          (
+            currentParent as unknown as { remove?: (w: Gtk.Widget) => void }
+          ).remove?.(p.widget);
+        } catch (_e) {
+          p.widget.unparent();
+        }
+      }
+      (p.widget as Gtk.Widget & { _popupId?: number })._popupId = p.id;
+      container.append(p.widget);
+    }
+  };
+
+  const checkAndNotify = (): void => {
+    const empty = livePopupCount() === 0 || !isFocused;
+    if (empty && !lastEmpty) {
+      lastEmpty = true;
       props?.onEmpty?.();
-    } else if (popups.size === 1) {
-      // Just got first notification
+    } else if (!empty && lastEmpty) {
+      lastEmpty = false;
       props?.onHasNotifications?.();
     }
-  }
+  };
 
-  function addPopup(notification: NotificationData): void {
-    // Don't show duplicate popups
-    if (popups.has(notification.id)) return;
-
-    // Focused-monitor gating: only the currently-focused monitor renders
-    // popups. Resolved at popup-arrival time; we don't migrate popups across
-    // monitors mid-lifetime. If we can't resolve our own connector or the
-    // compositor can't tell us the focused monitor, fall through and show
-    // the popup (best-effort fallback).
-    const ownConnector = props?.getMonitorConnector?.() ?? null;
-    const focused = compositor.getFocusedMonitor();
-    if (ownConnector !== null && focused !== null && ownConnector !== focused) {
-      return;
-    }
-
-    // Synchronous-tag replacement: dismiss any prior popup that shares the
-    // same (appName, syncTag) key before showing the new one.
-    if (notification.syncTag !== null) {
-      const key = syncKey(notification.appName, notification.syncTag);
-      const priorId = syncTagToId.get(key);
-      if (priorId !== undefined && priorId !== notification.id) {
-        // Mirror what the user pressing "close" does — remove from the
-        // server too so the prior notification doesn't linger as resolved
-        // history elsewhere.
-        notificationService.dismissDuringPopup(priorId);
-        removePopup(priorId);
+  const refresh = (): void => {
+    const shouldBeFocused = isOwnerOfFocus();
+    if (shouldBeFocused !== isFocused) {
+      isFocused = shouldBeFocused;
+      if (!isFocused) {
+        detachAll();
       }
-      syncTagToId.set(key, notification.id);
     }
+    if (isFocused) {
+      attachAll();
+    }
+    checkAndNotify();
+  };
 
-    const popup = PopupNotification({
-      notification,
-      onDismiss: () => {
-        removePopup(notification.id);
-      },
-      onTimeout: () => {
-        // Timeout means it should go to history (unless transient/sync-tagged
-        // — the service has already excluded those from getNotifications()).
-        removePopup(notification.id);
-      },
+  // Subscribe to the global popup set.
+  const unsubPopups = subscribePopups(refresh);
+
+  // Subscribe to focus changes. Hyprland's notify::focused-workspace fires
+  // on focus-follows-mouse cross; niri's WorkspaceActivated fires on
+  // keyboard / workspace-switch focus changes (mouse-cross-only focus
+  // updates require additional niri-side wiring, deferred).
+  const unsubCompositor = compositor.connect({
+    onFocusedWorkspaceChanged: () => {
+      refresh();
+    },
+    onFocusedWindowChanged: () => {
+      // In niri, mouse-cross fires WindowFocusChanged but not
+      // WorkspaceActivated. Re-resolving on window focus catches that case.
+      refresh();
+    },
+  });
+
+  // Service-driven popup events: a new notification needs to construct a
+  // row and register it with popup-state. Dismissals from elsewhere need
+  // to be reflected back into popup-state.
+  //
+  // Only one container should drive these — otherwise every monitor's
+  // view would race to build its own row for the same notification.
+  // Each container registers a "become driver" callback; the registry
+  // picks the first registered as active and promotes the next one when
+  // the active driver is destroyed (e.g. monitor hotplug).
+  let unsubService: (() => void) | null = null;
+  let unsubServiceMain: (() => void) | null = null;
+
+  const becomeDriver = (): void => {
+    unsubService = notificationService.subscribeToPopups((notification) => {
+      const row = PopupNotificationRow(notification);
+      addPopupGlobal({
+        notification,
+        widget: row.widget,
+        progress: row.progress,
+        cleanup: row.cleanup,
+      });
     });
 
-    popups.set(notification.id, popup);
-    container.append(popup);
-    checkAndNotify();
-  }
-
-  function removePopup(id: number): void {
-    const popup = popups.get(id);
-    if (!popup) return;
-
-    (popup as Gtk.Widget & { _cleanup?: () => void })._cleanup?.();
-    container.remove(popup);
-    popups.delete(id);
-    // Clear any sync-tag mapping that points at this id.
-    for (const [key, mappedId] of syncTagToId) {
-      if (mappedId === id) syncTagToId.delete(key);
-    }
-    checkAndNotify();
-  }
-
-  // Subscribe to new notifications
-  const unsubscribe = notificationService.subscribeToPopups((notification) => {
-    addPopup(notification);
-  });
-
-  // Also listen for dismissals
-  const unsubscribeMain = notificationService.subscribe(() => {
-    // Remove any popups that were dismissed externally on the server. Use
-    // hasLiveNotification() rather than getNotifications() so transient and
-    // synchronous-tagged popups (which are excluded from history) aren't
-    // wrongly torn down before their timeout completes.
-    for (const [id, _popup] of popups) {
-      if (!notificationService.hasLiveNotification(id)) {
-        removePopup(id);
+    unsubServiceMain = notificationService.subscribe(() => {
+      // Reflect external dismissals. Use hasLiveNotification so transient
+      // and sync-tagged popups (excluded from getNotifications()) aren't
+      // wrongly torn down before their timeout completes.
+      for (const p of getLivePopups()) {
+        if (!notificationService.hasLiveNotification(p.id)) {
+          removePopupGlobal(p.id);
+        }
       }
-    }
-  });
+    });
+  };
+
+  const unregisterDriverCandidate = registerDriverCandidate(becomeDriver);
+
+  // Initial state.
+  refresh();
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
-    // Clean up all popups
-    for (const [id, _popup] of popups) {
-      removePopup(id);
-    }
-    unsubscribe();
-    unsubscribeMain();
+    unsubPopups();
+    unsubCompositor();
+    unsubService?.();
+    unsubServiceMain?.();
+    unregisterDriverCandidate();
+    detachAll();
   };
 
   return container;
+}
+
+/* -----------------------------
+ * Driver election
+ *
+ * Exactly one container at a time owns the service subscriptions that
+ * mutate popup-state. Containers register a "become driver" callback at
+ * construction; the first registered is invoked immediately. On the active
+ * driver's cleanup, the next-registered candidate (FIFO) is promoted.
+ * This handles monitor hotplug: if the driver's monitor is unplugged, the
+ * next monitor's container takes over without missing notifications.
+ *
+ * A nicer design would put the service subscription inside popup-state
+ * itself, but that creates a chicken-and-egg with module load order; the
+ * driver-election model keeps popup-state pure data.
+ * ----------------------------- */
+
+type DriverCandidate = {
+  becomeDriver: () => void;
+  // Set when this candidate is the active driver; null otherwise.
+  // We don't currently need to dispose driver subscriptions here because
+  // the container's own _cleanup() runs the unsubs and then calls
+  // unregisterDriverCandidate() which advances to the next candidate.
+};
+
+const driverQueue: DriverCandidate[] = [];
+let activeDriver: DriverCandidate | null = null;
+
+function registerDriverCandidate(becomeDriver: () => void): () => void {
+  const candidate: DriverCandidate = { becomeDriver };
+  driverQueue.push(candidate);
+  if (activeDriver === null) {
+    activeDriver = candidate;
+    becomeDriver();
+  }
+  return () => {
+    const idx = driverQueue.indexOf(candidate);
+    if (idx !== -1) driverQueue.splice(idx, 1);
+    if (activeDriver === candidate) {
+      activeDriver = driverQueue[0] ?? null;
+      activeDriver?.becomeDriver();
+    }
+  };
 }
