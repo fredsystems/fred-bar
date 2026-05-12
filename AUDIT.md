@@ -482,7 +482,7 @@ N_monitors × N_popups × 20 wakeups/sec.
 
 ---
 
-### `[ ] C-2.4` Media player: rebuild on active-player swap
+### `[x] C-2.4` Media player: rebuild on active-player swap
 
 **File:** `config/sidebar/media-player.tsx:447-503`
 
@@ -544,7 +544,7 @@ try/catch arms; control flow becomes obvious.
 
 ---
 
-### `[ ] C-2.8` Battery 2 s poll redundant with `notify::*`
+### `[x] C-2.8` Battery 2 s poll redundant with `notify::*`
 
 **File:** `config/right/battery/battery.tsx:147`
 
