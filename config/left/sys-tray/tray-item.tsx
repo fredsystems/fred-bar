@@ -3,6 +3,10 @@ import Gdk from "gi://Gdk?version=4.0";
 import GLib from "gi://GLib";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
+import {
+  createManualBackdrop,
+  type TrayBackdropHandle,
+} from "helpers/backdrop";
 import { createLogger } from "helpers/logger";
 import { attachTooltip } from "helpers/tooltip";
 import { fetchMenuLayout } from "./dbusmenu";
@@ -33,6 +37,42 @@ type TrayButton = Gtk.Button & {
  * ------------------------------------------------------------------ */
 let OPEN_POPOVER: Gtk.Popover | null = null;
 let OPEN_OWNER: Gtk.Widget | null = null;
+let ACTIVE_BACKDROP: TrayBackdropHandle | null = null;
+
+/**
+ * Per-monitor backdrop registry. We scope backdrops to a single monitor
+ * (rather than spanning all outputs) to limit recovery blast-radius if
+ * the layer-shell overlay ever wedges input on that display — the user
+ * can still reach another monitor and `pkill gjs`.
+ */
+const BACKDROPS_BY_MONITOR = new Map<number, TrayBackdropHandle>();
+
+/** Resolve the monitor index (GListModel order) hosting `widget`. */
+function monitorIndexOfWidget(widget: Gtk.Widget): number | null {
+  const native = widget.get_native();
+  if (!native) return null;
+  const surface = native.get_surface();
+  if (!surface) return null;
+  const display = Gdk.Display.get_default();
+  if (!display) return null;
+  const monitor = display.get_monitor_at_surface(surface);
+  if (!monitor) return null;
+  const monitors = display.get_monitors();
+  for (let i = 0; i < monitors.get_n_items(); i++) {
+    if (monitors.get_item(i) === monitor) return i;
+  }
+  return null;
+}
+
+function backdropForMonitor(monitorIndex: number): TrayBackdropHandle {
+  const cached = BACKDROPS_BY_MONITOR.get(monitorIndex);
+  if (cached) return cached;
+  const handle = createManualBackdrop(monitorIndex, () => {
+    closeOpenTrayPopover();
+  });
+  BACKDROPS_BY_MONITOR.set(monitorIndex, handle);
+  return handle;
+}
 
 /** Close whatever tray popover is currently open. No-op if none. */
 export function closeOpenTrayPopover(): void {
@@ -44,6 +84,10 @@ export function closeOpenTrayPopover(): void {
   }
   OPEN_POPOVER = null;
   OPEN_OWNER = null;
+  if (ACTIVE_BACKDROP) {
+    ACTIVE_BACKDROP.hide();
+    ACTIVE_BACKDROP = null;
+  }
 }
 
 /** Whether `target` is a descendant of the currently-open tray popover. */
@@ -137,6 +181,10 @@ function popupMenu(button: TrayButton, item: TrayItem): void {
         if (OPEN_POPOVER === popover) {
           OPEN_POPOVER = null;
           OPEN_OWNER = null;
+          if (ACTIVE_BACKDROP) {
+            ACTIVE_BACKDROP.hide();
+            ACTIVE_BACKDROP = null;
+          }
         }
         if (button._popover === popover) button._popover = null;
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
@@ -152,6 +200,18 @@ function popupMenu(button: TrayButton, item: TrayItem): void {
       button._popover = popover;
       OPEN_POPOVER = popover;
       OPEN_OWNER = button;
+
+      // Show a click-catcher backdrop on the same monitor as the tray
+      // button. Without it (and without a Wayland popup grab — see
+      // autohide:false in menu.tsx), clicks on the desktop or other
+      // windows wouldn't dismiss the menu. Scoped per-monitor on purpose
+      // (see comment on createManualBackdrop in helpers/backdrop.tsx).
+      const monitorIndex = monitorIndexOfWidget(button);
+      if (monitorIndex !== null) {
+        ACTIVE_BACKDROP = backdropForMonitor(monitorIndex);
+        ACTIVE_BACKDROP.show();
+      }
+
       popover.popup();
     })
     .catch((err: unknown) => {
