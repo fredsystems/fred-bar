@@ -248,6 +248,7 @@ export function NetworkPill(): Gtk.Box {
 
     // Tooltip inherits the pill's state class for consistent theming
     classes: () => [currentClass],
+    updateInterval: 1000,
   });
 
   /* -----------------------------
