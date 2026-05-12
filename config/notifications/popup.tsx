@@ -1,5 +1,6 @@
 import Gtk from "gi://Gtk?version=4.0";
 import { getCompositor } from "compositors";
+import { registerCleanup } from "helpers/cleanup";
 import { resolveNotificationIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
@@ -321,14 +322,14 @@ export function PopupNotificationContainer(
   refresh();
 
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(container, () => {
     unsubPopups();
     unsubCompositor();
     unsubService?.();
     unsubServiceMain?.();
     unregisterDriverCandidate();
     detachAll();
-  };
+  });
 
   return container;
 }

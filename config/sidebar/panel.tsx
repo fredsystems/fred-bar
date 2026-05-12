@@ -1,6 +1,7 @@
 import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import { setupBackdrop } from "helpers/backdrop";
+import { registerCleanup } from "helpers/cleanup";
 import { notificationService } from "services/notifications";
 import { getWindowManager } from "services/window-manager";
 import { ConnectivityToggles } from "./connectivity-toggles";
@@ -181,17 +182,11 @@ export function SidebarPanel(): Gtk.Box {
     updateCount();
   });
 
-  // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  // Cleanup. Children now auto-clean via the destroy signal, so we only
+  // need to drop the notification-service subscription here.
+  registerCleanup(container, () => {
     unsubscribe();
-    (mediaPlayer as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
-    (
-      connectivityToggles as Gtk.Widget & { _cleanup?: () => void }
-    )?._cleanup?.();
-    (powerProfiles as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
-    (sliders as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
-    (notifList as Gtk.Widget & { _cleanup?: () => void })?._cleanup?.();
-  };
+  });
 
   return container;
 }

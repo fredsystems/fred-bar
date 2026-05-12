@@ -2,6 +2,7 @@ import Bluetooth from "gi://AstalBluetooth";
 import Network from "gi://AstalNetwork";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { registerCleanup } from "helpers/cleanup";
 import { subscribeVpn, toggleVpn, type VpnStatus } from "services/vpn";
 
 const bluetooth = Bluetooth.get_default();
@@ -259,7 +260,7 @@ export function ConnectivityToggles(): Gtk.Box {
   });
 
   // Cleanup
-  (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(container, () => {
     if (btAdapterHandler && bluetooth.adapter) {
       bluetooth.adapter.disconnect(btAdapterHandler);
     }
@@ -279,7 +280,7 @@ export function ConnectivityToggles(): Gtk.Box {
       network.wired.disconnect(wiredHandler);
     }
     unsubscribeVpn();
-  };
+  });
 
   return container;
 }

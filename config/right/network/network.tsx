@@ -1,6 +1,7 @@
 import Network from "gi://AstalNetwork";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { registerCleanup } from "helpers/cleanup";
 import { attachTooltip } from "helpers/tooltip";
 import { subscribeVpn, type VpnStatus } from "services/vpn";
 
@@ -253,7 +254,7 @@ export function NetworkPill(): Gtk.Box {
    * Cleanup - disconnect signal handlers
    * ----------------------------- */
 
-  (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(box, () => {
     // Disconnect GObject signal handlers to prevent memory leaks
     if (network.wifi) {
       for (const id of wifiHandlers) network.wifi.disconnect(id);
@@ -262,7 +263,7 @@ export function NetworkPill(): Gtk.Box {
       for (const id of wiredHandlers) network.wired.disconnect(id);
     }
     unsubscribeVpn();
-  };
+  });
 
   return box;
 }

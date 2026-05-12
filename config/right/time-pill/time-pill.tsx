@@ -5,6 +5,7 @@ import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import type Cairo from "cairo";
 import { setupBackdrop } from "helpers/backdrop";
+import { registerCleanup } from "helpers/cleanup";
 import { attachTooltip } from "helpers/tooltip";
 import { getWindowManager } from "services/window-manager";
 import { CalendarView } from "./calendar-view";
@@ -556,14 +557,14 @@ export function TimePill({
 
   /* ───────── Cleanup ───────── */
 
-  (button as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(button, () => {
     if (expandTimeoutId !== null) GLib.source_remove(expandTimeoutId);
     if (collapseTimeoutId !== null) GLib.source_remove(collapseTimeoutId);
     if (tickTimeoutId !== null) {
       GLib.source_remove(tickTimeoutId);
       tickTimeoutId = null;
     }
-  };
+  });
 
   return button;
 }

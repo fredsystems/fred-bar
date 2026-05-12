@@ -2,6 +2,7 @@ import Wp from "gi://AstalWp";
 import Gdk from "gi://Gdk?version=4.0";
 import Gtk from "gi://Gtk?version=4.0";
 
+import { registerCleanup } from "helpers/cleanup";
 import { attachTooltip } from "helpers/tooltip";
 
 /* -----------------------------
@@ -264,7 +265,7 @@ export function VolumePill(): Gtk.Box {
    * Cleanup - disconnect signal handlers
    * ----------------------------- */
 
-  (box as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
+  registerCleanup(box, () => {
     // Disconnect audio-level signals
     audio.disconnect(speakerChangedId);
 
@@ -275,7 +276,7 @@ export function VolumePill(): Gtk.Box {
         speaker.disconnect(id);
       });
     }
-  };
+  });
 
   return box;
 }
