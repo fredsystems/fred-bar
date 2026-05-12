@@ -460,7 +460,7 @@ strategy that survives that (test under `G_DEBUG=gc-friendly`).
 
 ---
 
-### `[ ] C-2.3` Multi-monitor popups: per-popup 50 ms timer
+### `[x] C-2.3` Multi-monitor popups: per-popup 50 ms timer
 
 **File:** `config/notifications/popup.tsx:144`,
 `config/notifications/popup-window.tsx`

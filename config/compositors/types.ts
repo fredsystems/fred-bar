@@ -82,6 +82,13 @@ export interface CompositorAdapter {
   getFocusedWindowForMonitor(monitor: string): CompositorWindow | null;
 
   /**
+   * Get the connector name of the currently focused monitor/output.
+   * Returns null if unknown (e.g. fallback adapter, or before bootstrap
+   * completes).
+   */
+  getFocusedMonitor(): string | null;
+
+  /**
    * Get windows for a specific workspace
    */
   getWorkspaceWindows(workspaceId: number): CompositorWindow[];
