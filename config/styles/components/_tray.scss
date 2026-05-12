@@ -26,50 +26,32 @@
 // ============================================
 // Tray Menu Popover
 // ============================================
+//
+// Our tray menu is hand-rolled (see `config/left/sys-tray/menu.tsx` and
+// AUDIT C-1.16): we no longer use `Gtk.PopoverMenu.new_from_model`, so the
+// internal widget hierarchy is a plain `Gtk.Box` of `Gtk.Button`s wrapped
+// in a `Gtk.Popover`, not GTK's `modelbutton`/`scrolledwindow`/`viewport`
+// machinery. Selectors below target the css_classes we attach in code.
 
 popover.tray-menu {
   background-color: transparent;
   border: none;
   padding: 0;
   margin: 0;
-  // The popover is now anchored BOTTOM (see tray-item.tsx) and arrow is
-  // hidden, so the menu drops straight down from the tray button. No
-  // horizontal offset — GTK 4 will auto-flip if the menu would overflow
-  // the monitor's right edge. The previous `margin-left: -32px` was a
-  // workaround for PositionType.LEFT and clipped the menu's left side
-  // when the bar's tray was near the screen edge.
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 
-  // ScrolledWindow (direct child)
-  scrolledwindow {
-    background-color: transparent;
-    padding: 0;
-    margin: 0;
-    min-width: 0;
-    min-height: 0;
-    border: none;
-  }
-
-  // Viewport inside ScrolledWindow
-  viewport {
+  // Outer container drawn as the menu's "card" — border, padding, radius.
+  > contents,
+  .tray-menu-box {
     background-color: variables.$ctp-base;
     border: variables.$border-width-normal solid variables.$ctp-surface0;
     border-radius: variables.$radius-sm;
     padding: variables.$spacing-sm;
     margin: 0;
-    min-width: 0;
-    min-height: 0;
   }
 
-  // Hide scrollbars
-  scrollbar {
-    opacity: 0;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  // Menu items (modelbutton is GTK's internal widget)
-  modelbutton {
+  // Each clickable row (item or submenu).
+  .tray-menu-item {
     min-height: variables.$bar-height;
     padding: variables.$spacing-sm variables.$spacing-lg;
     border-radius: variables.$spacing-sm;
@@ -86,26 +68,44 @@ popover.tray-menu {
       background-color: variables.$ctp-surface1;
     }
 
-    // Submenu indicator
-    &.has-open-popup {
-      background-color: variables.$ctp-surface0;
-
-      &:hover {
-        background-color: variables.$ctp-surface1;
-        color: variables.$ctp-mauve;
-      }
+    &:disabled {
+      opacity: 0.45;
     }
   }
 
-  // Menu separators
-  separator {
+  // Submenu rows: keep the right-pointing arrow visually distinct.
+  .tray-menu-submenu {
+    .tray-menu-trailing {
+      color: variables.$ctp-subtext0;
+    }
+
+    &:hover .tray-menu-trailing {
+      color: variables.$ctp-mauve;
+    }
+  }
+
+  .tray-menu-row {
+    // Row layout is set in code (Gtk.Box HORIZONTAL with spacing); nothing
+    // to override here, but keep the rule as an anchor for future tweaks.
+  }
+
+  .tray-menu-icon {
+    color: variables.$ctp-text;
+  }
+
+  .tray-menu-label {
+    color: variables.$ctp-text;
+  }
+
+  .tray-menu-section-label {
+    color: variables.$ctp-subtext0;
+    font-size: 0.85em;
+    padding: variables.$spacing-xs variables.$spacing-lg;
+  }
+
+  .tray-menu-separator {
     min-height: 1px;
     margin: variables.$spacing-sm variables.$spacing-md;
     background-color: variables.$ctp-surface0;
-  }
-
-  // Menu labels
-  label {
-    color: variables.$ctp-text;
   }
 }

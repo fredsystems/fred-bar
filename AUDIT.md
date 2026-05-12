@@ -306,6 +306,120 @@ timer fires, cancel the collapse. Same debounce pattern as C-1.11.
 
 ---
 
+### `[x] C-1.16` Tray PopoverMenu × appmenu-glib-translator UAF crash
+
+**Files:** `config/left/sys-tray/tray-item.tsx`,
+`config/left/sys-tray/menu.tsx` (new),
+`config/left/sys-tray/dbusmenu.tsx` (new),
+`config/styles/components/_tray.scss`
+
+**Symptom:** Intermittent SIGSEGV in `g_variant_type_info_query` /
+`g_variant_type_info_get_type_string`, with a preceding burst of
+`g_atomic_ref_count_dec: assertion 'old_value > 0' failed` criticals,
+seconds-to-minutes after fred-bar starts. gdb showed zero JS frames
+between `g_application_run` and the segfault — the crash was on a
+GLib idle source `get_layout_idle` inside
+`libappmenu-glib-translator.so.0`, scheduled in response to a
+`com.canonical.dbusmenu` `LayoutUpdated` DBus signal from
+NetworkManager (fires on every Wi-Fi scan tick).
+
+**Root cause:** `appmenu-glib-translator` (the library that
+materialises a `GMenuModel` + `GActionGroup` from a remote
+`com.canonical.dbusmenu` object) installs `GVariant` and
+`GVariantTypeInfo` pointers into the model's attribute table _by
+reference_, then frees them when its own `dbus_menu_item_t` state
+machine processes an incoming `LayoutUpdated` signal. Any read from
+the resulting `GMenuModel` after that free dereferences the dangling
+type info. The crash reproduces under:
+
+- `Gtk.PopoverMenu.new_from_model(item.menu_model)` (model walk at
+  construction).
+- Hand-rolled `GMenuModel` walk using the borrowing accessor
+  `iterate_item_attributes` (reads borrowed `GVariantTypeInfo`).
+- Hand-rolled walk using the _copying_ accessor
+  `get_item_attribute_value` (GLib's default implementation,
+  `g_menu_model_real_get_item_attribute_value`, still calls
+  `g_variant_is_of_type` on the borrowed type info before copying —
+  same UAF).
+
+In short: **any read of a translator-owned `GMenuModel` is unsafe**,
+regardless of accessor. Documented upstream as
+[Aylur/astal#398](https://github.com/Aylur/astal/issues/398). Several
+mitigations attempted before settling on the fix below:
+
+1. Cache popover + invalidate on `notify::menu-model` — broke
+   submenu affordances (`PopoverMenu` bakes structure at construct
+   time, so popovers built before NM's async Wi-Fi fill have no
+   submenu arrow).
+2. Rebuild popover on every click via `new_from_model` — still
+   crashed inside `gtk_menu_tracker_item_new` →
+   `g_menu_item_get_attribute`.
+3. Hand-roll `Gtk.Popover` from a `GMenuModel` walk using the
+   "copying" `get_item_attribute_value` accessor — still crashed in
+   `g_menu_model_real_get_item_attribute_value` →
+   `g_variant_is_of_type` → `g_variant_type_info_get_type_string`.
+
+**Fix (applied):** Bypass the translator entirely. Talk to the
+remote `com.canonical.dbusmenu` object ourselves over D-Bus, decode
+the reply into pure JS data, and never touch
+`item.menu_model` / `item.action_group`.
+
+- **`config/left/sys-tray/dbusmenu.tsx`** (new) — minimal direct
+  dbusmenu client:
+  - `aboutToShow(busName, path, parentId)` → DBus `AboutToShow(i)`
+    so lazy menus (NM "Available Networks", Discord per-server)
+    populate before we read.
+  - `fetchMenuSubtree(busName, path, parentId, depth)` → DBus
+    `GetLayout(i i as)`; `recursiveUnpack()` the reply _once_ and
+    return a pure-JS `MenuNode` tree. After this returns we never
+    touch the source `GVariant` again, so subsequent translator or
+    app mutations cannot affect our widgets.
+  - `sendClicked(busName, path, id)` → DBus `Event(i s v u)` with
+    `eventId="clicked"`, used for leaf activation and toggle/radio
+    rows alike.
+  - `dbusCall()` helper wraps `Gio.DBusConnection.call` in an
+    explicit Promise via the callback overload — the gir's
+    Promise-form overload errors at runtime with "At least 10
+    arguments required, but only 9 passed".
+  - `getBus()` uses `bus_get_sync` (cached singleton, effectively
+    free) instead of `bus_get`, which had a similar overload
+    ambiguity.
+
+- **`config/left/sys-tray/menu.tsx`** (new) — builds a `Gtk.Popover`
+  tree from a `MenuNode`. Plain `Gtk.Box` of `Gtk.Button` rows,
+  trailing `object-select-symbolic` / `radio-checked-symbolic` /
+  `radio-symbolic` / `go-next-symbolic` glyphs for
+  checkmark/radio/submenu, idle-`unparent` on close. Mnemonic
+  stripping handles `_` markers and `__` literal underscores.
+
+- **`config/left/sys-tray/tray-item.tsx`** — `popupMenu()` is now
+  async: extracts the well-known bus name from `item.item_id`
+  (`service + path` per AstalTray `tray-item.vala:278`),
+  `fetchMenuLayout()`s the root with `depth=1`, hands the
+  `MenuNode` to `buildTrayMenu()`. Reconfirms the single-open
+  invariant after the fetch resolves in case the user clicked
+  elsewhere meanwhile.
+
+**Freshness (sub-fix):** NetworkManager and similar volatile-menu
+apps rebuild submenu subtrees with fresh IDs every Wi-Fi scan
+(seconds). Caching the initial `GetLayout(0, -1)` would leave us
+sending `Event(clicked, id)` for items the server already replaced
+— surfaced as
+`GDBus.Error:…_LIBDBUSMENU_2dGLIB.Code0: The ID supplied N does not
+refer to a menu item we have`. So we fetch lazily:
+
+- Root popover open → `GetLayout(0, depth=1)` (just root +
+  immediate children, with `hasSubmenu` flags).
+- Submenu row clicked → `AboutToShow(node.id)` +
+  `GetLayout(node.id, depth=-1)`, build & pop a fresh child
+  popover; idle-unparent on close. No caching across opens.
+
+**Residual risk:** A sub-millisecond race between a submenu's
+`GetLayout` reply and a server-side rebuild remains theoretically
+possible; `sendClicked` swallows the resulting error at debug level.
+
+---
+
 ## 2. Memory / performance
 
 ### `[x] C-2.1` `systemState` 250 ms churn

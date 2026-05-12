@@ -1,10 +1,12 @@
 import AstalTray from "gi://AstalTray";
 import Gdk from "gi://Gdk?version=4.0";
-import Gio from "gi://Gio";
+import GLib from "gi://GLib";
 import GObject from "gi://GObject";
 import Gtk from "gi://Gtk?version=4.0";
 import { createLogger } from "helpers/logger";
 import { attachTooltip } from "helpers/tooltip";
+import { fetchMenuLayout } from "./dbusmenu";
+import { buildTrayMenu } from "./menu";
 
 const log = createLogger("Tray");
 
@@ -18,43 +20,6 @@ type TrayButton = Gtk.Button & {
 // ---- Global "only one popover open" state ----
 let OPEN_POPOVER: Gtk.Popover | null = null;
 
-/**
- * Walk a menu_model and collect the set of action prefixes referenced by
- * its items (e.g. `dbusmenu`, `app`, `unity`, `indicator`). The
- * StatusNotifierItem spec uses `dbusmenu.` exclusively, but in practice
- * different toolkits emit menus with different prefixes. We register the
- * action_group only under the prefixes that actually appear, plus
- * `dbusmenu` as a safety baseline (some bare menus rely on it implicitly).
- */
-function collectActionPrefixes(model: Gio.MenuModel): Set<string> {
-  const prefixes = new Set<string>(["dbusmenu"]);
-  const visit = (m: Gio.MenuModel): void => {
-    const n = m.get_n_items();
-    for (let i = 0; i < n; i++) {
-      const actionVar = m.get_item_attribute_value(
-        i,
-        Gio.MENU_ATTRIBUTE_ACTION,
-        null,
-      );
-      if (actionVar) {
-        const action = actionVar.get_string()[0];
-        const dot = action.indexOf(".");
-        if (dot > 0) prefixes.add(action.slice(0, dot));
-      }
-      const section = m.get_item_link(i, Gio.MENU_LINK_SECTION);
-      if (section) visit(section);
-      const submenu = m.get_item_link(i, Gio.MENU_LINK_SUBMENU);
-      if (submenu) visit(submenu);
-    }
-  };
-  try {
-    visit(model);
-  } catch (err) {
-    log.warn("menu prefix scan failed:", err);
-  }
-  return prefixes;
-}
-
 function closeOpenPopover(): void {
   if (!OPEN_POPOVER) return;
 
@@ -67,56 +32,94 @@ function closeOpenPopover(): void {
   OPEN_POPOVER = null;
 }
 
-function ensurePopover(button: TrayButton, item: TrayItem): Gtk.Popover | null {
-  if (!item.menu_model || !item.action_group) return null;
-
-  if (!button._popover) {
-    // Use PopoverMenu but access and manipulate its internal child
-    const popover = Gtk.PopoverMenu.new_from_model(item.menu_model);
-    popover.set_parent(button);
-    popover.set_has_arrow(false);
-    popover.set_autohide(true);
-    // Drop the menu downward from the bar, matching every other GTK status
-    // tray. The previous PositionType.LEFT meant the popover was anchored
-    // to the *left* of the button — which on a top bar with the tray on
-    // the left of the screen pushes the menu off-screen and gets clipped
-    // by the monitor edge. BOTTOM is the natural reading direction and
-    // GTK auto-flips horizontally if the menu would overflow the right
-    // edge, so it works for tray icons placed anywhere along the bar.
-    popover.set_position(Gtk.PositionType.BOTTOM);
-    popover.add_css_class("tray-menu");
-
-    // Register the action_group only under prefixes the menu actually
-    // uses. Previously we blanket-registered under dbusmenu/app/unity/
-    // indicator which works but pollutes GTK's action map per item and
-    // makes activation lookups ambiguous. See AUDIT C-1.10.
-    if (item.action_group) {
-      const prefixes = collectActionPrefixes(item.menu_model);
-      for (const p of prefixes) {
-        popover.insert_action_group(p, item.action_group);
-      }
-    }
-
-    popover.connect("closed", () => {
-      if (OPEN_POPOVER === popover) OPEN_POPOVER = null;
-    });
-
-    button._popover = popover;
-  }
-
-  return button._popover;
+/**
+ * Recover the tray app's well-known D-Bus name from `item.item_id`.
+ *
+ * AstalTray composes `item_id = service + object_path` where `object_path`
+ * starts with `/` (e.g. `org.kde.StatusNotifierItem-1234-1/StatusNotifierItem`).
+ * Splitting on the first `/` gives us the bus name.
+ *
+ * We can't use the well-known-vs-unique-name distinction from AstalTray
+ * (which uses `proxy.g_name_owner`, the unique `:1.NN` name) — that's not
+ * exposed in the gir. The well-known name is fine: D-Bus routes to the
+ * current owner automatically.
+ */
+function busNameFromItemId(itemId: string): string | null {
+  const slash = itemId.indexOf("/");
+  if (slash <= 0) return null;
+  return itemId.substring(0, slash);
 }
 
-function popupMenu(button: TrayButton, item: TrayItem): void {
-  const popover = ensurePopover(button, item);
-  if (!popover) return;
+/** Read the unintrospectable `menu_path` property at runtime. */
+function menuObjectPath(item: TrayItem): string | null {
+  // `menu_path` is typed `never` in the gir because it's `ObjectPath`, but
+  // at runtime it's a plain string (or null). Cast through `unknown`.
+  const raw = (item as unknown as { menu_path?: string | null }).menu_path;
+  return typeof raw === "string" && raw.startsWith("/") ? raw : null;
+}
 
-  if (OPEN_POPOVER && OPEN_POPOVER !== popover) {
-    closeOpenPopover();
+/**
+ * Open the tray menu for `item`. Fetches layout over D-Bus, builds the
+ * popover, and pops it up.
+ *
+ * Fetching is async (~ms over the session bus), so the popover appears
+ * slightly after the click. We intentionally don't pre-fetch: the freshest
+ * layout is the one the user expects.
+ */
+function popupMenu(button: TrayButton, item: TrayItem): void {
+  closeOpenPopover();
+
+  const busName = busNameFromItemId(item.item_id);
+  const objectPath = menuObjectPath(item);
+
+  if (!busName || !objectPath) {
+    log.debug(`no dbusmenu coordinates for ${item.item_id}`);
+    return;
   }
 
-  OPEN_POPOVER = popover;
-  popover.popup();
+  fetchMenuLayout(busName, objectPath)
+    .then((root) => {
+      if (!root) return;
+
+      // If the user clicked elsewhere while we were fetching, another popover
+      // may have opened. Close it first so we maintain the single-open
+      // invariant.
+      closeOpenPopover();
+
+      let popover: Gtk.Popover;
+      try {
+        popover = buildTrayMenu(root, busName, objectPath);
+      } catch (err) {
+        log.warn("menu construction failed:", err);
+        return;
+      }
+
+      popover.set_parent(button);
+      popover.set_position(Gtk.PositionType.BOTTOM);
+
+      // Defer unparent to idle: `closed` is emitted from inside GTK's hide
+      // / grab-release path, so mutating the widget tree synchronously here
+      // can reenter under rapid open/close.
+      popover.connect("closed", () => {
+        if (OPEN_POPOVER === popover) OPEN_POPOVER = null;
+        if (button._popover === popover) button._popover = null;
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+          try {
+            popover.unparent();
+          } catch {
+            /* ignore */
+          }
+          return GLib.SOURCE_REMOVE;
+        });
+      });
+
+      button._popover = popover;
+      OPEN_POPOVER = popover;
+      popover.popup();
+    })
+    .catch((err: unknown) => {
+      log.warn(`fetchMenuLayout for ${item.item_id} threw:`, err);
+    });
 }
 
 /* ------------------------------------------------------------------
@@ -174,7 +177,7 @@ export function TrayItem(item: TrayItem): TrayButton {
   }) as TrayButton;
 
   /* ----------------------------------------------------------------
-   * Tooltip attachment (NEW)
+   * Tooltip attachment
    * ---------------------------------------------------------------- */
   const tooltip = resolveTooltipMarkup(item);
   if (tooltip) {
@@ -211,18 +214,12 @@ export function TrayItem(item: TrayItem): TrayButton {
 
   button.add_controller(rightClick);
 
-  // Cleanup for when SystemTray removes this widget
+  // Cleanup for when SystemTray removes this widget. The popover is normally
+  // unparented on idle from its own `closed` handler; here we handle the
+  // edge case of the tray item being removed while its menu is still open.
   button._cleanup = () => {
-    if (button._popover && OPEN_POPOVER === button._popover) {
-      closeOpenPopover();
-    }
-
     if (button._popover) {
-      try {
-        button._popover.unparent();
-      } catch {
-        /* ignore */
-      }
+      if (OPEN_POPOVER === button._popover) closeOpenPopover();
       button._popover = null;
     }
   };
