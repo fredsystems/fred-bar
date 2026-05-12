@@ -14,7 +14,7 @@ function getMediaSignal(): SystemSignal | null {
 
   // Check for active microphone (Audio/Source)
   if (audio) {
-    const activeMic = audio.recorders.find((recorder) => recorder.volume > 0);
+    const activeMic = audio.recorders?.find((recorder) => recorder.volume > 0);
     if (activeMic) {
       return {
         severity: "info",
@@ -51,7 +51,7 @@ function getMediaSignal(): SystemSignal | null {
 
   // Check for audio playback (Audio/Sink streams)
   if (audio) {
-    const activeStream = audio.streams.find((stream) => stream.volume > 0);
+    const activeStream = audio.streams?.find((stream) => stream.volume > 0);
     if (activeStream) {
       return {
         severity: "info",

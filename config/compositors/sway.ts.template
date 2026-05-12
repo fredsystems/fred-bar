@@ -292,7 +292,7 @@ export class SwayAdapter implements CompositorAdapter {
           handlers.onFocusedWindowChanged();
         }
       }
-    }, 100) as unknown as number; // Poll every 100ms
+    }, 100); // Poll every 100ms
 
     // Return disconnect function
     return () => {

@@ -44,7 +44,9 @@ export function ConnectivityToggles(): Gtk.Box {
   bluetoothBtn.set_child(bluetoothBox);
 
   bluetoothBtn.connect("clicked", () => {
-    bluetooth.adapter.powered = !bluetooth.adapter.powered;
+    if (bluetooth.adapter) {
+      bluetooth.adapter.powered = !bluetooth.adapter.powered;
+    }
   });
 
   connectivityRow.append(bluetoothBtn);

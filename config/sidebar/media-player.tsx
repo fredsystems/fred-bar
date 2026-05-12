@@ -305,11 +305,7 @@ function PlayerWidget(initialPlayer: Mpris.Player): PlayerWidgetBox {
     const position = player.position ?? 0;
 
     // Try to get the actual track length from the GLib.Variant metadata
-    const metadataVariant = (
-      player as unknown as {
-        metadata?: { lookup_value?: (key: string, type: null) => unknown };
-      }
-    ).metadata;
+    const metadataVariant = player.metadata;
     let length = 0;
 
     if (metadataVariant && typeof metadataVariant.lookup_value === "function") {
@@ -397,23 +393,23 @@ function PlayerWidget(initialPlayer: Mpris.Player): PlayerWidgetBox {
     prevBtn.sensitive = player.can_go_previous;
     nextBtn.sensitive = player.can_go_next;
 
-    // Shuffle - display only
-    const shuffleStatus = (player as unknown as { shuffle?: boolean }).shuffle;
-    if (shuffleStatus !== undefined && shuffleStatus !== null) {
-      if (shuffleStatus) {
+    // Shuffle - display only. shuffle_status is a Shuffle enum:
+    // UNSUPPORTED (hide button), ON (active), OFF (inactive).
+    const shuffleStatus = player.shuffle_status;
+    if (shuffleStatus === Mpris.Shuffle.UNSUPPORTED) {
+      shuffleBtn.visible = false;
+    } else {
+      if (shuffleStatus === Mpris.Shuffle.ON) {
         shuffleBtn.add_css_class("active");
       } else {
         shuffleBtn.remove_css_class("active");
       }
       shuffleBtn.visible = true;
-    } else {
-      shuffleBtn.visible = false;
     }
 
     // Loop - display only
-    const loopStatus = (player as unknown as { loop_status?: number })
-      .loop_status;
-    if (loopStatus !== undefined && loopStatus !== null) {
+    const loopStatus = player.loop_status;
+    if (loopStatus !== Mpris.Loop.UNSUPPORTED) {
       loopBtn.remove_css_class("active");
       loopBtn.remove_css_class("loop-track");
       loopBtn.remove_css_class("loop-playlist");

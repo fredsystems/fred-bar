@@ -226,9 +226,11 @@ export function PopupNotificationContainer(
       if (currentParent === container) continue;
       if (currentParent) {
         try {
-          (
-            currentParent as unknown as { remove?: (w: Gtk.Widget) => void }
-          ).remove?.(p.widget);
+          if (currentParent instanceof Gtk.Box) {
+            currentParent.remove(p.widget);
+          } else {
+            p.widget.unparent();
+          }
         } catch (_e) {
           p.widget.unparent();
         }

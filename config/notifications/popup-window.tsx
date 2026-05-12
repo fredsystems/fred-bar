@@ -1,6 +1,7 @@
 import Gdk from "gi://Gdk?version=4.0";
 import type Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
+import { asWindow } from "helpers/jsx";
 import { PopupNotificationContainer } from "./popup";
 
 /**
@@ -31,7 +32,7 @@ export function PopupNotificationWindow(monitorIndex: number): Gtk.Window {
   // by the time we're called (otherwise we wouldn't have an index).
   const ownConnector = connectorForMonitorIndex(monitorIndex);
 
-  const win = (
+  const win = asWindow(
     <window
       name={`notification-popup-${monitorIndex}`}
       visible={false}
@@ -55,8 +56,8 @@ export function PopupNotificationWindow(monitorIndex: number): Gtk.Window {
           win.set_default_size(-1, -1);
         }}
       />
-    </window>
-  ) as unknown as Gtk.Window;
+    </window>,
+  );
 
   return win;
 }

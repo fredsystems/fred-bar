@@ -660,7 +660,7 @@ another empty-tzid clock is added.
 
 ---
 
-### `[ ] C-3.5` Pervasive `as unknown as { ... }` casts
+### `[x] C-3.5` Pervasive `as unknown as { ... }` casts
 
 **Examples:** `config/sidebar/media-player.tsx:278-282`,
 `config/center/workspaces.tsx:251-253`.

@@ -13,7 +13,7 @@ function formatTime(timestamp: number): string {
 
   if (!notifTime) return "";
 
-  const diff = now.difference(notifTime) / 1_000_000; // Convert to seconds
+  const diff = Number(now.difference(notifTime)) / 1_000_000; // Convert to seconds
 
   if (diff < 60) {
     return "Just now";
@@ -33,7 +33,7 @@ function formatTime(timestamp: number): string {
 function NotificationItem(
   notif: NotificationData,
   isGrouped: boolean,
-): Gtk.Box {
+): Gtk.Widget {
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 0,
@@ -168,7 +168,7 @@ function NotificationItem(
     button.add_css_class("urgency-low");
   }
 
-  return button as unknown as Gtk.Box;
+  return button;
 }
 
 interface NotificationGroupProps {

@@ -5,6 +5,7 @@ import { Astal } from "ags/gtk4";
 import App from "ags/gtk4/app";
 
 import { WindowWorkspacesPill } from "./center/window-workspaces-pill";
+import { asWindow } from "./helpers/jsx";
 import { createLogger } from "./helpers/logger";
 import { SystemTray } from "./left/sys-tray/tray";
 import {
@@ -58,7 +59,7 @@ function recursiveCleanup(widget: Gtk.Widget | null): void {
 function Bar(monitorIndex: number): Gtk.Window {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
-  const window = (
+  const window = asWindow(
     <window
       name={`fredbar-${monitorIndex}`}
       visible
@@ -88,8 +89,8 @@ function Bar(monitorIndex: number): Gtk.Window {
           <StatePill />
         </box>
       </centerbox>
-    </window>
-  ) as unknown as Gtk.Window;
+    </window>,
+  );
 
   // Ensure all widget cleanup methods are called when window is destroyed
   window.connect("destroy", () => {
@@ -137,23 +138,11 @@ function Bar(monitorIndex: number): Gtk.Window {
 
 /** AGS API compatibility shim */
 function appAddWindow(win: Gtk.Window): void {
-  const anyApp = App as unknown as {
-    addWindow?: (w: Gtk.Window) => void;
-    add_window?: (w: Gtk.Window) => void;
-  };
-
-  anyApp.addWindow?.(win);
-  anyApp.add_window?.(win);
+  App.add_window(win);
 }
 
 function appRemoveWindow(win: Gtk.Window): void {
-  const anyApp = App as unknown as {
-    removeWindow?: (w: Gtk.Window) => void;
-    remove_window?: (w: Gtk.Window) => void;
-  };
-
-  anyApp.removeWindow?.(win);
-  anyApp.remove_window?.(win);
+  App.remove_window(win);
 }
 
 App.start({
