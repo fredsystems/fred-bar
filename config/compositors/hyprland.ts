@@ -76,6 +76,15 @@ export class HyprlandAdapter implements CompositorAdapter {
     return this.getFocusedWindow();
   }
 
+  getFocusedMonitor(): string | null {
+    // Hyprland tracks focused monitor on focused_workspace.monitor (a
+    // Hyprland.Monitor object with a `name` string).
+    const ws = this.hypr.focused_workspace;
+    const monitor = (ws as unknown as { monitor?: { name?: string } } | null)
+      ?.monitor;
+    return monitor?.name ?? null;
+  }
+
   getWorkspaceWindows(workspaceId: number): CompositorWindow[] {
     return this.getWindows().filter(
       (win) => win.workspaceId === workspaceId && !win.hidden,

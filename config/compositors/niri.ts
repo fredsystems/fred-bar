@@ -375,6 +375,10 @@ export class NiriAdapter implements CompositorAdapter {
     return w ? this.toCompositorWindow(w) : null;
   }
 
+  getFocusedMonitor(): string | null {
+    return this.focusedOutput;
+  }
+
   getWindows(): CompositorWindow[] {
     const out: CompositorWindow[] = [];
     for (const w of this.windows.values()) {

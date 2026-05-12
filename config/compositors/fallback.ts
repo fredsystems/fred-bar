@@ -39,6 +39,10 @@ export class FallbackAdapter implements CompositorAdapter {
     return null;
   }
 
+  getFocusedMonitor(): string | null {
+    return null;
+  }
+
   getWorkspaceWindows(_workspaceId: number): CompositorWindow[] {
     return [];
   }

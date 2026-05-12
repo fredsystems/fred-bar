@@ -1,5 +1,6 @@
 import GLib from "gi://GLib";
 import Gtk from "gi://Gtk?version=4.0";
+import { getCompositor } from "compositors";
 import { resolveNotificationIcon } from "helpers/icon-resolver";
 import {
   type NotificationData,
@@ -7,6 +8,62 @@ import {
 } from "services/notifications";
 
 const POPUP_TIMEOUT = 10000; // 10 seconds
+const PROGRESS_TICK_MS = 100; // shared scheduler cadence
+
+/* -----------------------------
+ * Shared progress scheduler
+ *
+ * One GLib source ticks every PROGRESS_TICK_MS and drives every live popup's
+ * progress bar. Previously each PopupNotification spawned its own 50ms timer,
+ * meaning N monitors × M popups × 20Hz wakeups. Now: a single 10Hz source for
+ * the whole app, regardless of popup count.
+ * ----------------------------- */
+
+interface SharedPopupEntry {
+  startTime: number; // GLib.get_monotonic_time() in microseconds
+  progress: Gtk.ProgressBar;
+  onTimeout: () => void;
+}
+
+const sharedPopups = new Set<SharedPopupEntry>();
+let sharedTimerId: number | null = null;
+
+function ensureSharedTimer(): void {
+  if (sharedTimerId !== null) return;
+  sharedTimerId = GLib.timeout_add(
+    GLib.PRIORITY_DEFAULT,
+    PROGRESS_TICK_MS,
+    () => {
+      // Iterate over a snapshot so onTimeout handlers can mutate the set.
+      const snapshot = Array.from(sharedPopups);
+      const now = GLib.get_monotonic_time();
+      for (const entry of snapshot) {
+        const elapsed = (now - entry.startTime) / 1000; // µs → ms
+        const remaining = Math.max(0, POPUP_TIMEOUT - elapsed);
+        entry.progress.fraction = remaining / POPUP_TIMEOUT;
+        if (remaining <= 0) {
+          sharedPopups.delete(entry);
+          entry.onTimeout();
+        }
+      }
+      if (sharedPopups.size === 0) {
+        sharedTimerId = null;
+        return GLib.SOURCE_REMOVE;
+      }
+      return GLib.SOURCE_CONTINUE;
+    },
+  );
+}
+
+function registerPopupProgress(entry: SharedPopupEntry): void {
+  sharedPopups.add(entry);
+  ensureSharedTimer();
+}
+
+function unregisterPopupProgress(entry: SharedPopupEntry): void {
+  sharedPopups.delete(entry);
+  // Timer is self-cancelling once the set empties; no need to remove here.
+}
 
 interface PopupNotificationProps {
   notification: NotificationData;
@@ -125,36 +182,31 @@ function PopupNotification(props: PopupNotificationProps): Gtk.Box {
 
   container.append(body);
 
-  // Timeout animation
-  let timeoutId: number | null = null;
-  const startTime = GLib.get_monotonic_time();
-  const updateProgress = (): boolean => {
-    const elapsed = (GLib.get_monotonic_time() - startTime) / 1000; // microseconds to milliseconds
-    const remaining = Math.max(0, POPUP_TIMEOUT - elapsed);
-    progress.fraction = remaining / POPUP_TIMEOUT;
-
-    if (remaining <= 0) {
-      onTimeout();
-      return false; // Stop the timeout
-    }
-
-    return true; // Continue
+  // Timeout animation — driven by the shared scheduler.
+  const entry: SharedPopupEntry = {
+    startTime: GLib.get_monotonic_time(),
+    progress,
+    onTimeout,
   };
-
-  timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, updateProgress);
+  registerPopupProgress(entry);
 
   // Cleanup
   (container as Gtk.Widget & { _cleanup?: () => void })._cleanup = () => {
-    if (timeoutId !== null) {
-      GLib.Source.remove(timeoutId);
-      timeoutId = null;
-    }
+    unregisterPopupProgress(entry);
   };
 
   return container;
 }
 
 interface PopupNotificationContainerProps {
+  /**
+   * Connector name of the monitor this container lives on (e.g. "DP-2").
+   * Used to gate popup creation to the focused monitor only.
+   * Resolved lazily by the caller — typically via `getMonitorConnectorName`
+   * once the parent window is realised. If null, the container accepts
+   * popups unconditionally (fallback: no focused-monitor info available).
+   */
+  getMonitorConnector?: () => string | null;
   onEmpty?: () => void;
   onHasNotifications?: () => void;
 }
@@ -162,6 +214,7 @@ interface PopupNotificationContainerProps {
 export function PopupNotificationContainer(
   props?: PopupNotificationContainerProps,
 ): Gtk.Box {
+  const compositor = getCompositor();
   const container = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 8,
@@ -190,6 +243,17 @@ export function PopupNotificationContainer(
   function addPopup(notification: NotificationData): void {
     // Don't show duplicate popups
     if (popups.has(notification.id)) return;
+
+    // Focused-monitor gating: only the currently-focused monitor renders
+    // popups. Resolved at popup-arrival time; we don't migrate popups across
+    // monitors mid-lifetime. If we can't resolve our own connector or the
+    // compositor can't tell us the focused monitor, fall through and show
+    // the popup (best-effort fallback).
+    const ownConnector = props?.getMonitorConnector?.() ?? null;
+    const focused = compositor.getFocusedMonitor();
+    if (ownConnector !== null && focused !== null && ownConnector !== focused) {
+      return;
+    }
 
     // Synchronous-tag replacement: dismiss any prior popup that shares the
     // same (appName, syncTag) key before showing the new one.
