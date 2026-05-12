@@ -170,6 +170,11 @@
                 typos
                 nixfmt
                 markdownlint-cli2
+                # Debugger for tracking down gjs/GLib refcount underflows and
+                # segfaults that have no JS-side backtrace. Pair with
+                # `G_DEBUG=fatal-criticals` so the first GLib-CRITICAL halts
+                # the process in gdb.
+                gdb
                 ((patchedAgs system).override {
                   extraPackages = self.lib.fredbarAstalPackages system;
                 })
