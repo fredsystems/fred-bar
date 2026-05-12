@@ -4,3 +4,6 @@ dotfiles/fred/.config/nvim/lazy-lock.json
 *.pre-commit-config.yaml
 .DS_Store
 @girs
+config/**/*.js
+config/node_modules
+config/package-lock.json

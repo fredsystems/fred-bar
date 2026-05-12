@@ -1,0 +1,9 @@
+{
+  "name": "fred-bar-config",
+  "private": true,
+  "description": "TypeScript dependencies for the fred-bar ags config. The runtime is provided by the ags CLI (which bundles its own ags/gnim); npm here only serves tsc for typechecking.",
+  "dependencies": {
+    "ags": "*",
+    "gnim": "*"
+  }
+}

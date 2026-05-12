@@ -1,5 +1,5 @@
 import GLib from "gi://GLib";
-import type Gtk from "gi://Gtk?version=4.0";
+import Gtk from "gi://Gtk?version=4.0";
 import {
   type NotificationData,
   notificationService,
@@ -166,12 +166,15 @@ export function removePopupGlobal(id: number): void {
   const parent = entry.widget.get_parent();
   if (parent) {
     try {
-      (parent as unknown as { remove?: (w: Gtk.Widget) => void }).remove?.(
-        entry.widget,
-      );
-    } catch (_e) {
-      // Some containers don't expose remove(); fall back to unparent.
-      entry.widget.unparent();
+      if (parent instanceof Gtk.Box) {
+        parent.remove(entry.widget);
+      } else {
+        // Defensive: unparent regardless of container kind. Falls back to
+        // unparent() which works for any Widget child.
+        entry.widget.unparent();
+      }
+    } catch {
+      // Best-effort; if reparenting already happened we may get here.
     }
   }
 

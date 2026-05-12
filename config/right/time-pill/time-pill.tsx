@@ -6,6 +6,7 @@ import { Astal } from "ags/gtk4";
 import type Cairo from "cairo";
 import { setupBackdrop } from "helpers/backdrop";
 import { registerCleanup } from "helpers/cleanup";
+import { asWindow } from "helpers/jsx";
 import { attachTooltip } from "helpers/tooltip";
 import { getWindowManager } from "services/window-manager";
 import { CalendarView } from "./calendar-view";
@@ -92,7 +93,7 @@ export function TimePill({
 
   const { TOP, RIGHT } = Astal.WindowAnchor;
 
-  const timeWindow = (
+  const timeWindow = asWindow(
     <window
       name={windowName}
       visible={false}
@@ -115,8 +116,8 @@ export function TimePill({
       // global key-snooper on the application root rather than
       // re-introducing keyboard interactivity on this window.
       keymode={Astal.Keymode.NONE}
-    />
-  ) as unknown as Gtk.Window;
+    />,
+  );
 
   const popRoot = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,

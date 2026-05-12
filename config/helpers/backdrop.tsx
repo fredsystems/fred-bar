@@ -4,6 +4,7 @@
 import Gtk from "gi://Gtk?version=4.0";
 import { Astal } from "ags/gtk4";
 import App from "ags/gtk4/app";
+import { asWindow } from "./jsx";
 
 /**
  * Create a transparent backdrop window that closes a target window when clicked
@@ -15,7 +16,7 @@ export function createBackdrop(
 ): Gtk.Window {
   const { TOP, RIGHT, BOTTOM, LEFT } = Astal.WindowAnchor;
 
-  const backdrop = (
+  const backdrop = asWindow(
     <window
       name={`backdrop-${targetWindow.name || "unknown"}`}
       visible={false}
@@ -24,8 +25,8 @@ export function createBackdrop(
       exclusivity={Astal.Exclusivity.NORMAL}
       layer={Astal.Layer.TOP}
       keymode={Astal.Keymode.NONE}
-    />
-  ) as unknown as Gtk.Window;
+    />,
+  );
 
   // Make the backdrop transparent and clickable
   const box = new Gtk.Box({
@@ -49,12 +50,9 @@ export function createBackdrop(
     backdrop.visible = targetWindow.visible;
   });
 
-  // Register with App. AGS' Astal.Application binding exposes `add_window`
-  // (the GIR/GTK name); the camelCase alias is provided by some bindings
-  // but `add_window` is canonical and always present in gtk-4.0.
-  (App as unknown as { add_window: (w: Gtk.Window) => void }).add_window(
-    backdrop,
-  );
+  // Register with App. AGS' Astal.Application extends Gtk.Application
+  // which provides add_window.
+  App.add_window(backdrop);
 
   return backdrop;
 }
@@ -107,7 +105,7 @@ export function createManualBackdrop(
 ): TrayBackdropHandle {
   const { TOP, RIGHT, BOTTOM, LEFT } = Astal.WindowAnchor;
 
-  const backdrop = (
+  const backdrop = asWindow(
     <window
       name="backdrop-tray"
       visible={false}
@@ -117,8 +115,8 @@ export function createManualBackdrop(
       exclusivity={Astal.Exclusivity.NORMAL}
       layer={Astal.Layer.TOP}
       keymode={Astal.Keymode.NONE}
-    />
-  ) as unknown as Gtk.Window;
+    />,
+  );
 
   const box = new Gtk.Box({
     css_classes: ["backdrop-box"],
@@ -133,9 +131,7 @@ export function createManualBackdrop(
   });
   box.add_controller(clickController);
 
-  (App as unknown as { add_window: (w: Gtk.Window) => void }).add_window(
-    backdrop,
-  );
+  App.add_window(backdrop);
 
   return {
     show: () => {

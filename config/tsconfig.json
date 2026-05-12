@@ -1,22 +1,17 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-
-    "moduleResolution": "bundler",
-
+    "strict": true,
+    "module": "ES2022",
+    "target": "ES2020",
+    "lib": ["ES2023"],
+    "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "jsxImportSource": "ags/gtk4",
-
-    "strict": true,
-    "skipLibCheck": true,
-
     "baseUrl": ".",
-    "paths": {
-      "ags/*": ["/home/fred/.local/share/ags/lib/*"],
-      "@girs/*": ["/home/fred/.config/ags/@girs/*"]
-    }
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true
   },
-
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }
