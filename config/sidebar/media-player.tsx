@@ -370,6 +370,22 @@ function PlayerWidget(initialPlayer: Mpris.Player): PlayerWidgetBox {
       return;
     }
 
+    // Some players (notably Chromium-based browsers on certain YouTube videos)
+    // report mpris:length and Position as the *same* value while PlaybackStatus
+    // is still "Playing". That places the playhead permanently at the end and
+    // gives a bogus total duration. Detect this and hide the scrubber rather
+    // than show misleading numbers. We allow a tiny epsilon and only suppress
+    // while actively playing — if the user genuinely paused at track end the
+    // status will be Paused/Stopped and we'll keep showing it.
+    if (
+      length > 0 &&
+      Math.abs(position - length) < 0.5 &&
+      player.playback_status === Mpris.PlaybackStatus.PLAYING
+    ) {
+      positionBox.visible = false;
+      return;
+    }
+
     positionScale.set_range(0, length);
     if (!isManuallyDragging) {
       positionScale.set_value(position);
