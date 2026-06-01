@@ -401,11 +401,11 @@
         "systems": "systems_2"
       },
       "locked": {
-        "lastModified": 1777392587,
-        "narHash": "sha256-pJhNBGIBmviw8C4SQtIhGGlVlJYANAm3VRazncZKq5Q=",
+        "lastModified": 1778610771,
+        "narHash": "sha256-msCMXV9k9+1siOPaxSzNJwx/o8pn2srCR4h0pxyW/WE=",
         "owner": "hyprwm",
         "repo": "hyprshutdown",
-        "rev": "f70097e670adddb5a02fb0994804532d6b483b72",
+        "rev": "db1f38b03b173984ae9ed3abeb9750583c9bbd91",
         "type": "github"
       },
       "original": {
